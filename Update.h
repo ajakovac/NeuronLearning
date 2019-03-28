@@ -26,9 +26,12 @@
 // nonlinear function. to define it we have to provide the nonlin function
 auto affine_nonlin_update = [](auto f) {
   return [=](Network* N, int sn) {
-    double res = N->siteOffset(sn);
-    for (int cn = 0; cn < N->nConnections(sn); ++cn)
-      res+= N->siteConnection(sn, cn)*N->siteConnectedValue(sn, cn);
+    double res = N->bias(sn);
+    auto cnfn = N->readConnection(sn);
+    auto cnvfn = N->readConnectedValue(sn);
+    int cnmax = N->nConnections(sn);
+    for (int cn = 0; cn < cnmax; ++cn)
+      res+= cnfn(cn)* cnvfn(cn);
     N->axon(sn) = f(res);
   };
 };
