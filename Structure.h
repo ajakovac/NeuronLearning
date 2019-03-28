@@ -27,7 +27,7 @@ class Network {
   std::vector<double> axons;
   std::vector<int> layers;  // all axons have a layer number
   std::vector<int> conn_offset;  // here starts the connections of a given site
-  std::vector<double> offset;  // the offset at each point
+  std::vector<double> bias_data;  // the bias at each point
 
   // vector of number_of layers size:
   // the axons belonging to a layer are placed continuously, starting from
@@ -61,8 +61,8 @@ class Network {
     return axons[layer_offset[lyn] + lyindex];}
   // site ID from layer number and relative index
   int getsiteID(int lyn, int sli) { return layer_offset[lyn] + sli; }
-  // siteOffset is a double parameter assigned to the site sn
-  double& siteOffset(int sn) {return offset[sn]; }
+  // bias is a double parameter assigned to the site sn
+  double& bias(int sn) {return bias_data[sn]; }
   // number of all sites
   int nSites() {return axons.size();}
   // number of layers
@@ -135,6 +135,34 @@ class Network {
   }
 
   //////////////////////////////////////////////////////////////
+  // data access through lambda expressions //
+  //////////////////////////////////////////////////////////////
+
+  // provides a lambda accessing the connection
+  auto readConnection(int sn) {
+    double *conndat = &conn[ conn_offset[sn]];
+    return [=](int cn) {
+      return *(conndat+cn);
+    };
+  }
+
+  // provides a lambda accessing the connected value
+  auto readConnectedSite(int sn) {
+    int *connst = &connsite[ conn_offset[sn]];
+    return [=](int cn) {
+      return *(connst+cn);
+    };
+  }
+
+  // provides a lambda accessing the connected value
+  auto readConnectedValue(int sn) {
+    int *connst = &connsite[ conn_offset[sn]];
+    return [=](int cn) {
+      return axons[*(connst+cn)];
+    };
+  }
+
+  //////////////////////////////////////////////////////////////
   // functions to build up a network //
   //////////////////////////////////////////////////////////////
 
@@ -159,7 +187,7 @@ class Network {
     if (axind > 0) lind=layers[axind-1]+1;  // get the next layer number
     for (int n = 0; n < lysize; n++) {
       axons.push_back(0.0);  // default axon value is zero
-      offset.push_back(0.0);  // default offset value is zero
+      bias_data.push_back(0.0);  // default bias value is zero
       layers.push_back(lind);  // all of these axons have the same layer number
       conn_offset.push_back(0);  // no connections for this site
     }
@@ -205,7 +233,7 @@ class Network {
 
     file << "\n#num\taxons\toffset\tlayer\tposition\tconn_offset\n";
     for (int sn = 0; sn < axons.size(); sn++) {
-      file << sn << "\t" << axons[sn] <<"\t" << offset[sn] << "\t";
+      file << sn << "\t" << axons[sn] <<"\t" << bias_data[sn] << "\t";
       file << layers[sn] << "\t";
       file << sitePos(sn) << "\t\t" << conn_offset[sn];
       file  << std::endl;
@@ -237,11 +265,11 @@ class Network {
       file << layer_offset[lyn] << " " << shapes[lyn] << std::endl;
 
 
-    file << "\n#axons offset layer conn_offset\n";
+    file << "\n#axons bias layer conn_offset\n";
     file << layers.size() << std::endl;
     for (int sn = 0; sn < axons.size(); sn++) {
       file << axons[sn] << " ";
-      file << offset[sn] << " ";
+      file << bias_data[sn] << " ";
       file << layers[sn] << " ";
       file << conn_offset[sn];
       file  << std::endl;
@@ -299,7 +327,7 @@ class Network {
       file >> xread;
       axons.push_back(xread);
       file >> xread;
-      offset.push_back(xread);
+      bias_data.push_back(xread);
       file >> intread;
       layers.push_back(intread);
       file >> intread;
