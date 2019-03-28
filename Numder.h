@@ -16,7 +16,7 @@ class Numder {
 
   // vectors of number_of_axons size
   std::vector<double> z;  // to store the derivative wrt. the axons
-  std::vector<double> doffset;  // to store the derivative wrt. the offsets
+  std::vector<double> dbias;  // to store the derivative wrt. the biass
   // numeric derivation needs a partial updat function that updates the network
   // starting from a given layer
   std::function< void(Network*, int) >  partial_update;
@@ -24,7 +24,7 @@ class Numder {
   // in the constructor we set no bp propagation
   Numder(Network *Lin, std::function< void(Network*, int) > pupd) :
     L(Lin), dconn(Lin->nallConnections()),
-    z(Lin->nSites(), 0), doffset(Lin->nSites(), 0),
+    z(Lin->nSites(), 0), dbias(Lin->nSites(), 0),
     partial_update(pupd) {}
 
   void getD() {
@@ -49,11 +49,11 @@ class Numder {
           L->siteConnection(n, cid)-= dx;
           partial_update(L, ly);
         }
-        x = L->siteOffset(n);
-        L->siteOffset(n) +=dx;
+        x = L->bias(n);
+        L->bias(n) +=dx;
         partial_update(L, ly);
-        doffset[n] = (L->axon(lossID)-y)/dx;
-        L->siteOffset(n)-= dx;
+        dbias[n] = (L->axon(lossID)-y)/dx;
+        L->bias(n)-= dx;
         partial_update(L, ly);
     }
   }
