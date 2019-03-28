@@ -8,6 +8,7 @@
 #include "Backprop.h"
 #include "Mnist_db.h"
 #include "Update.h"
+#include "Learning.h"
 
 int main(int argc, char const *argv[]) {
   randiv.set_seed(10);
@@ -44,16 +45,16 @@ int main(int argc, char const *argv[]) {
 
   // ----------------------------------------------------------------------- //
 
+  DNetwork bpntw(&ntw);
+  DNetwork bpntwadd(&ntw);
+
   auto update = [=](Network *N) {
     N->applytoLayer(ly1, [=](int n){ ly1update(N, n);});
     N->applytoLayer(lyres, [=](int n){ lyresupdate(N, n);});
     N->applytoLayer(lossly, [=](int n){ lossupdate(N, n);});
   };
 
-  BPNetwork bpntw(&ntw);
-  BPNetwork bpntwadd(&ntw);
-
-  auto backpropagate = [=](BPNetwork *BPN) {
+  auto backpropagate = [=](DNetwork *BPN) {
     Network *N = BPN->associatedNetwork();
     BPN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
     N->applytoLayer(lossly, [=](int n){ lossbp(BPN, n);});
@@ -61,28 +62,22 @@ int main(int argc, char const *argv[]) {
     N->applytoLayer(ly1, [=](int n){ ly1bp(BPN, n);});
   };
 
-  auto learn = [=](BPNetwork *BPN, int lynum, double lrate) {
-    Network *N = BPN->associatedNetwork();
-    N->applytoLayer(lynum, [&](int n) {
-      for (int cnn = 0; cnn < N->nConnections(n); cnn++) {
-        N->siteConnection(n, cnn) -= lrate* BPN->Dconn(n, cnn);
-      }
-    });
-  };
+  auto learn = steepest_descent;
 
   int epochnumber = 5;  // train in epochs
   int batchsize = 50;    // gradient collectionin batches, each batchsize long
   int batchnumber = mnist.numdat/batchsize;  // number of batches
-  double learningrate = 0.01;  // average learning rate
+  double learningrate = 0.02;  // average learning rate
 
   int printnumber = 10;  // print after printnumber batches
   int nerrprint = 0;  // count the batches after last print
   double err = 0;    // error calculation
   int ncorr = 0;     // correct answers count
 
+  std::cout << "#epoch\tnbtch\tavrerr\tavrcorr(%)" << std::endl;
   for (int epoch = 0; epoch < epochnumber; ++epoch) {
     mnist.restart();  // in each epoch we start the training set from beginning
-    std::cout << "-------------------------------------" << std::endl;
+    std::cout << std::endl << std::endl;
 
     for (int nbtch = 0; nbtch < batchnumber; ++nbtch) {
       bpntwadd.reset();  // in each new batch restart derivative collection
@@ -118,10 +113,10 @@ int main(int argc, char const *argv[]) {
       }
 
       if (nerrprint == printnumber) {
-        std::cout << epoch << ". epoch, " << nbtch << ". batch: ";
-        std::cout << "avr.error=" << err/(nerrprint*batchsize);
-        std::cout << ", avr.corr=" << (ncorr*100.0)/(nerrprint*batchsize);
-        std::cout << "%" << std::endl;
+        std::cout << epoch << " " << nbtch;
+        std::cout << " " << err/(nerrprint*batchsize);
+        std::cout << " " << (ncorr*100.0)/(nerrprint*batchsize);
+        std::cout << std::endl;
         nerrprint = 1;
         err = 0;
         ncorr = 0;
@@ -132,12 +127,11 @@ int main(int argc, char const *argv[]) {
       // learning: steepest descent
       double lrate = learningrate/batchsize;
       learn(&bpntwadd, ly1, lrate);
-      learn(&bpntwadd, lyres, 8*lrate);
+      learn(&bpntwadd, lyres, 10*lrate);
     }
   }
-
   // save the optimized network
-  ntw.save("learn_mnist.ntw");
+  // ntw.save("learn_mnist.ntw");
 
   return 0;
 }
