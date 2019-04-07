@@ -1,10 +1,10 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
-#ifndef RND_H_
-#define RND_H_
+#ifndef INCLUDE_RND_HPP_
+#define INCLUDE_RND_HPP_
 
 #include <random>
-#include "Error.h"
+#include "Error.hpp"
 
 // The random class with normal and uniform distributions
 
@@ -50,4 +50,4 @@ auto cnst = [](double val) {
   return [=](){return val;};
 };
 
-#endif  // RND_H_
+#endif  // INCLUDE_RND_HPP_

@@ -1,11 +1,11 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
 #include <cmath>
 #include <SFML/Graphics.hpp>
-#include "ImageLayer.h"
-#include "Error.h"
-#include "Update.h"
+#include "ImageLayer.hpp"
+#include "Error.hpp"
+#include "Update.hpp"
 
 const double pi = 3.1415926535897932384626433832795028841971693993751;
 

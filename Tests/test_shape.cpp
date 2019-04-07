@@ -1,7 +1,7 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
-#include "Shape.h"
+#include "Shape.hpp"
 
 int main(int argc, char const *argv[]) {
   std::cout << "\nShape testing!\n";

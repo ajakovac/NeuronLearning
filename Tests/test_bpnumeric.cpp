@@ -1,11 +1,11 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
 #include <cmath>
-#include "Structure.h"
-#include "Update.h"
-#include "Backprop.h"
-#include "Numder.h"
+#include "Structure.hpp"
+#include "Update.hpp"
+#include "Backprop.hpp"
+#include "Numder.hpp"
 
 // the best test to check whether we caclculate the derivative correctly,
 // if we compute them numerically, too.
@@ -17,7 +17,6 @@ int main(int argc, char const *argv[]) {
   // these bool vectors are used to decide whether the different derivatives
   // are to be compared with the numeric derivation
   std::vector<bool>  pr_Dsite;    // site derivative
-  std::vector<bool>  pr_Doffset;  // offset derivative
   std::vector<bool>  pr_Dconn;    // connection derivatives
 
   Network ntw;
@@ -25,7 +24,6 @@ int main(int argc, char const *argv[]) {
   int basely = ntw.AddLayer({10});
   ntw.applytoLayer(basely, [&](int n){ ntw[n] = normal_dist(0.0, 1.0)(); });
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(false);
   pr_Dconn.push_back(false);
 
   int ly1 = ntw.AddLayer({8});
@@ -33,7 +31,6 @@ int main(int argc, char const *argv[]) {
   auto ly1update = affine_nonlin_update(tanh_fn(1.0, 1.0));
   auto ly1bp = affine_nonlin_bp(dtanh(1.0, 1.0));
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(true);
   pr_Dconn.push_back(true);
 
   int lypool = ntw.AddLayer({6});
@@ -41,7 +38,6 @@ int main(int argc, char const *argv[]) {
   auto lypoolupdate = maxpool_update;
   auto lypoolbp = affine_nonlin_bp(d_id);
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(false);
   pr_Dconn.push_back(false);
 
   int ly3 = ntw.AddLayer({12});
@@ -49,7 +45,6 @@ int main(int argc, char const *argv[]) {
   auto ly3update = affine_nonlin_update(ReLU);
   auto ly3bp = affine_nonlin_bp(dReLU);
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(true);
   pr_Dconn.push_back(true);
 
   int lydrop = ntw.AddLayer({12});
@@ -58,7 +53,6 @@ int main(int argc, char const *argv[]) {
   auto lydropupdate = dropout_update(&p);
   auto lydropbp = affine_nonlin_bp(d_id);
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(false);  // no offset
   pr_Dconn.push_back(false);  // connection does not play role
 
   int resly = ntw.AddLayer({8});
@@ -66,7 +60,6 @@ int main(int argc, char const *argv[]) {
   auto reslyupdate = affine_nonlin_update(exp_fn(1.0, 0.5));
   auto reslybp = affine_nonlin_bp(dexp(1.0, 0.5));
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(true);
   pr_Dconn.push_back(true);
 
   int lossly = ntw.AddLayer({1});
@@ -77,7 +70,6 @@ int main(int argc, char const *argv[]) {
   auto lossbp = d_pnorm_loss(1, &expected_output);
   // auto lossbp = d_KL_loss(&expected_output);  // d_pnorm_loss(1, &expected_output);
   pr_Dsite.push_back(true);
-  pr_Doffset.push_back(false);    // no offset
   pr_Dconn.push_back(false);  // connection does not play role
 
   // ----------------------------------------------------------------------- //
@@ -95,9 +87,9 @@ int main(int argc, char const *argv[]) {
   ntw.save("test_bp_numeric_all_1.ntw");
 
   // ----------------------------------------------------------------------- //
-  BPNetwork bpntw(&ntw);
+  DNetwork bpntw(&ntw);
 
-  auto backpropagate = [=](BPNetwork *BPL) {
+  auto backpropagate = [=](DNetwork *BPL) {
     Network *L = BPL->associatedNetwork();
     BPL->Dsite(L->nSites()-1) = 1.0;  // start with unit derivative
     L->applytoLayer(lossly, [=](int n){ lossbp(BPL, n); });
@@ -147,14 +139,6 @@ int main(int argc, char const *argv[]) {
       std::cout << "\tDaxon=" << bpntw.Dsite(n) << " -- "
                           << ndntw.z[n];
       error2+= sq(bpntw.Dsite(n)-ndntw.z[n]);
-      nerr++;
-      std::cout << std::endl;
-    }
-    if (pr_Doffset[lyn]) {
-      std::cout << "\t: offset=" << ntw.siteOffset(n);
-      std::cout << "\tDoffset=" << bpntw.Doffset(n) << " -- "
-                                << ndntw.doffset[n];
-      error2+= sq(bpntw.Doffset(n)-ndntw.doffset[n]);
       nerr++;
       std::cout << std::endl;
     }

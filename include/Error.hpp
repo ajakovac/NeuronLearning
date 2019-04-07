@@ -1,22 +1,17 @@
-//
-//  File:	error.h
-//  Id:		$Id$
-//  Author:	Antal Jakovac
-//
-//  Description: the basic class of eror handling
-//
-#ifndef ERROR_H
-#define ERROR_H
+/* Copyright (C) NeuronLearning_project
+ * Written by A. Jakovac 2018 */
+#ifndef INCLUDE_ERROR_HPP_
+#define INCLUDE_ERROR_HPP_
 
 #include <string>
 
 class Error {
-public:
-  Error(char * u) : error_message(u) {};
-  Error(const char * u) : error_message(u) {};
-  Error(std::string &s) : error_message(s.c_str()) {};
-  Error(const std::string &s) : error_message(s.c_str()) {};
+ public:
+  explicit Error(char * u) : error_message(u) {}
+  explicit Error(const char * u) : error_message(u) {}
+  explicit Error(std::string &s) : error_message(s.c_str()) {}
+  explicit Error(const std::string &s) : error_message(s.c_str()) {}
   const char * error_message;
 };
 
-#endif //ERROR_H
+#endif  // INCLUDE_ERROR_HPP_

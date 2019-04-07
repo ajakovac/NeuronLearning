@@ -1,10 +1,10 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
-#ifndef UPDATE_H_
-#define UPDATE_H_
+#ifndef INCLUDE_UPDATE_HPP_
+#define INCLUDE_UPDATE_HPP_
 
 #include <vector>
-#include "Structure.h"
+#include "Structure.hpp"
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@
 // nonlinear function. to define it we have to provide the nonlin function
 auto affine_nonlin_update = [](auto f) {
   return [=](Network* N, int sn) {
-    double res = N->bias(sn);
+    double res = 0.0;
     auto cnfn = N->readConnection(sn);
     auto cnvfn = N->readConnectedValue(sn);
     int cnmax = N->nConnections(sn);
@@ -143,4 +143,4 @@ void normalize(std::vector<double> *v) {
 }
 
 
-#endif  // UPDATE_H_
+#endif  // INCLUDE_UPDATE_HPP_

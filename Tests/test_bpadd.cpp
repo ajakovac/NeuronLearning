@@ -1,10 +1,10 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
 #include <string>
-#include "Structure.h"
-#include "Backprop.h"
-#include "Update.h"
+#include "Structure.hpp"
+#include "Backprop.hpp"
+#include "Update.hpp"
 
 int main(int argc, char const *argv[]) {
   randiv.set_seed(10);
@@ -30,17 +30,17 @@ int main(int argc, char const *argv[]) {
     N->applytoLayer(lossly, [=](int n){ lossupdate(N, n);});
   };
 
-  BPNetwork bpntw(&ntw);
-  BPNetwork bpntw_collect(&ntw);
+  DNetwork bpntw(&ntw);
+  DNetwork bpntw_collect(&ntw);
 
-  auto backpropagate = [=](BPNetwork *BPN) {
+  auto backpropagate = [=](DNetwork *BPN) {
     Network *N = BPN->associatedNetwork();
     BPN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
     N->applytoLayer(lossly, [=](int n){ lossbp(BPN, n);});
     N->applytoLayer(lyres, [=](int n){ lyresbp(BPN, n);});
   };
 
-  auto learn = [=](BPNetwork *BPN, int lynum, double lrate) {
+  auto learn = [=](DNetwork *BPN, int lynum, double lrate) {
     Network *N = BPN->associatedNetwork();
     N->applytoLayer(lynum, [&](int n) {
       for (int cnn = 0; cnn < N->nConnections(n); cnn++) {

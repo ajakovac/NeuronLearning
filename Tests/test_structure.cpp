@@ -1,9 +1,9 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include<iostream>
-#include "Error.h"
-#include "Structure.h"
-#include "Update.h"
+#include "Error.hpp"
+#include "Structure.hpp"
+#include "Update.hpp"
 
 using std::cout;
 using std::endl;

@@ -1,29 +1,33 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
 #include <string>
-#include <SFML/Graphics.hpp>
-#include "Structure.h"
-#include "ImageLayer.h"
-#include "Backprop.h"
-#include "Mnist_db.h"
-#include "Update.h"
-#include "Learning.h"
+#include <chrono>
+#include "Structure.hpp"
+#include "Backprop.hpp"
+#include "mnist.hpp"
+#include "Update.hpp"
+#include "Learning.hpp"
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char const *argv[]) try {
   randiv.set_seed(10);
 
+  char img_name[] =
+    "/home/jakovac/Work/AI/Datasets/mnist/train_images";
+  char lbl_name[] =
+    "/home/jakovac/Work/AI/Datasets/mnist/train_labels";
   // we need the MNIST database for character recognition learning
-  sf::Image img;
-  MNIST_Database mnist("train-images.idx3-ubyte",
-                       "train-labels-idx1-ubyte", img);
+  MNIST_dataset mnist(img_name, lbl_name);
+  int nrows = mnist.height;
+  int ncols = mnist.width;
+  int numdat = 60000;
+  int *data = mnist.data(Red);
 
   // Here we set up the network
-
   Network ntw;
-  int basely = ntw.AddLayer({mnist.nrows, mnist.ncols});
+  int basely = ntw.AddLayer({nrows, ncols});
 
-  int  ly1 = ntw.AddLayer({mnist.nrows, mnist.ncols});
+  int  ly1 = ntw.AddLayer({nrows, ncols});
   ntw.ConnectLastLayer(alllayer(basely), normal_cf(0.0, 0.01));
   auto ly1update = affine_nonlin_update(ReLU);
   auto ly1bp = affine_nonlin_bp(dReLU);
@@ -54,43 +58,73 @@ int main(int argc, char const *argv[]) {
     N->applytoLayer(lossly, [=](int n){ lossupdate(N, n);});
   };
 
-  auto backpropagate = [=](DNetwork *BPN) {
-    Network *N = BPN->associatedNetwork();
-    BPN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
-    N->applytoLayer(lossly, [=](int n){ lossbp(BPN, n);});
-    N->applytoLayer(lyres, [=](int n){ lyresbp(BPN, n);});
-    N->applytoLayer(ly1, [=](int n){ ly1bp(BPN, n);});
+  auto backpropagate = [=](DNetwork *DN) {
+    Network *N = DN->associatedNetwork();
+    DN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
+    N->applytoLayer(lossly, [=](int n){ lossbp(DN, n);});
+    N->applytoLayer(lyres, [=](int n){ lyresbp(DN, n);});
+    N->applytoLayer(ly1, [=](int n){ ly1bp(DN, n);});
   };
 
-  auto learn = steepest_descent;
-
+  // use this setting for a complete learning
   int epochnumber = 5;  // train in epochs
-  int batchsize = 50;    // gradient collectionin batches, each batchsize long
-  int batchnumber = mnist.numdat/batchsize;  // number of batches
+  int batchsize = 50;  // gradient collection in batches, each batchsize long
+  int batchnumber = numdat/batchsize;  // number of batches
   double learningrate = 0.02;  // average learning rate
-
   int printnumber = 10;  // print after printnumber batches
-  int nerrprint = 0;  // count the batches after last print
+
+  double releaserate = 0.999;  // reducing learning rate after each learning
+
+  // use the following setting for learn the first picture
+  // int epochnumber = 20;  // train in epochs
+  // int batchsize = 1;  // gradient collection in batches, each batchsize long
+  // int batchnumber = 1;  // number of batches
+  // double learningrate = 0.02;  // average learning rate
+  // int printnumber = 1;  // print after printnumber batches
+
+  int nerrprint = 1;  // count the batches after last print
   double err = 0;    // error calculation
   int ncorr = 0;     // correct answers count
 
-  std::cout << "#epoch\tnbtch\tavrerr\tavrcorr(%)" << std::endl;
+
+  ADAM learnmethod(&bpntwadd);
+  std::cout << "#ADAM learning";
+
+  // ConjugateGadient learnmethod(&bpntwadd);
+  // std::cout << "#conjugate gradient learning";
+
+  // SteepestDescent learnmethod(&bpntwadd);
+  // std::cout << "#steepest descent learning";
+
+  // StochGrad learnmethod(&bpntwadd);
+  // std::cout << "#stochastic gradient learning";
+  // batchsize = 1;
+  // batchnumber = mnist.numdat;
+  // printnumber = 499;
+
+  std::cout << "\n#---------\n";
+
+  std::cout << "#cnt\tepoch\tnbtch\tavrerr\tavrcorr(%)" << std::endl;
+  int globalcount = 0;
+
   for (int epoch = 0; epoch < epochnumber; ++epoch) {
     mnist.restart();  // in each epoch we start the training set from beginning
-    std::cout << std::endl << std::endl;
+    // std::cout << std::endl << std::endl;
 
     for (int nbtch = 0; nbtch < batchnumber; ++nbtch) {
       bpntwadd.reset();  // in each new batch restart derivative collection
 
-      for (int btch = 0; btch < batchsize; ++btch) {
-        if (!mnist.next_pic()) {    // load the next image
-          mnist.restart();
-          mnist.next_pic();
-        }
-        Image_to_Layer(&ntw, basely, &img);
+      // auto t1 = std::chrono::high_resolution_clock::now();
 
+      for (int btch = 0; btch < batchsize; ++btch) {
+        if (!mnist.next()) {    // load the next image
+          mnist.restart();
+          mnist.next();
+        }
+        for (int n = 0; n < nrows*ncols; ++n)
+          ntw.axon(basely, n) = data[n]/255.0;
         for (double& x : expected_output) x = 0.01;
-        expected_output[mnist.label] = 1.0;
+        expected_output[mnist.label()] = 1.0;
         normalize(&expected_output);
 
         update(&ntw);
@@ -109,10 +143,16 @@ int main(int argc, char const *argv[]) {
             maxv = ntw.axon(n);
           }
         });
-        if (maxn == mnist.label) ++ncorr;
+        if (maxn == mnist.label()) ++ncorr;
       }
 
-      if (nerrprint == printnumber) {
+      // auto t2 = std::chrono::high_resolution_clock::now();
+      // auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+      // std::cout << "dt = " << dt << " ms\n";
+
+
+      if (nerrprint > printnumber) {
+        std::cout << globalcount++ << " ";
         std::cout << epoch << " " << nbtch;
         std::cout << " " << err/(nerrprint*batchsize);
         std::cout << " " << (ncorr*100.0)/(nerrprint*batchsize);
@@ -124,14 +164,17 @@ int main(int argc, char const *argv[]) {
         ++nerrprint;
       }
 
-      // learning: steepest descent
+      // learning with the actual learn method
       double lrate = learningrate/batchsize;
-      learn(&bpntwadd, ly1, lrate);
-      learn(&bpntwadd, lyres, 10*lrate);
+      learnmethod.startlearncycle();
+      learnmethod.learn(ly1, lrate);
+      learnmethod.learn(lyres, 10*lrate);
     }
   }
   // save the optimized network
-  // ntw.save("learn_mnist.ntw");
+  ntw.save("learn_mnist.ntw");
 
   return 0;
+} catch(Error & u) {
+  std::cerr << u.error_message << std::endl;
 }

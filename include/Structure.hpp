@@ -1,7 +1,7 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
-#ifndef STRUCTURE_H_
-#define STRUCTURE_H_
+#ifndef INCLUDE_STRUCTURE_HPP_
+#define INCLUDE_STRUCTURE_HPP_
 
 #include<vector>
 #include<cmath>
@@ -9,8 +9,8 @@
 #include<algorithm>
 #include<fstream>
 #include<string>
-#include "Shape.h"
-#include "Rnd.h"
+#include "Shape.hpp"
+#include "Rnd.hpp"
 
 // This file defines the basic sructural building blocks. These are collected
 // in the class Network.
@@ -27,7 +27,6 @@ class Network {
   std::vector<double> axons;
   std::vector<int> layers;  // all axons have a layer number
   std::vector<int> conn_offset;  // here starts the connections of a given site
-  std::vector<double> bias_data;  // the bias at each point
 
   // vector of number_of layers size:
   // the axons belonging to a layer are placed continuously, starting from
@@ -61,8 +60,6 @@ class Network {
     return axons[layer_offset[lyn] + lyindex];}
   // site ID from layer number and relative index
   int getsiteID(int lyn, int sli) { return layer_offset[lyn] + sli; }
-  // bias is a double parameter assigned to the site sn
-  double& bias(int sn) {return bias_data[sn]; }
   // number of all sites
   int nSites() {return axons.size();}
   // number of layers
@@ -177,6 +174,19 @@ class Network {
     for (int n = layer_offset[lyn]; n < nmax; n++) F(n);
   }
 
+  // apply a function to all connections in a layer
+  template< typename T>
+  void forallConnectionsinLayer(int lyn, T F) {
+    int nmax;
+    if (lyn == layer_offset.size()-1) nmax = axons.size();
+    else
+      nmax = layer_offset[lyn+1];
+    for (int n = layer_offset[lyn]; n < nmax; n++) {
+      int cnmax = nConnections(n);
+      for (int cn = 0; cn < cnmax; ++cn) F(n, cn);
+    }
+  }
+
   // create a layer by specifying its shape
   // IMPORTANT! Layer creation order means layer hierarchy as well!!
   int AddLayer(const Shape s) {
@@ -187,7 +197,6 @@ class Network {
     if (axind > 0) lind=layers[axind-1]+1;  // get the next layer number
     for (int n = 0; n < lysize; n++) {
       axons.push_back(0.0);  // default axon value is zero
-      bias_data.push_back(0.0);  // default bias value is zero
       layers.push_back(lind);  // all of these axons have the same layer number
       conn_offset.push_back(0);  // no connections for this site
     }
@@ -233,7 +242,7 @@ class Network {
 
     file << "\n#num\taxons\toffset\tlayer\tposition\tconn_offset\n";
     for (int sn = 0; sn < axons.size(); sn++) {
-      file << sn << "\t" << axons[sn] <<"\t" << bias_data[sn] << "\t";
+      file << sn << "\t" << axons[sn] <<"\t";
       file << layers[sn] << "\t";
       file << sitePos(sn) << "\t\t" << conn_offset[sn];
       file  << std::endl;
@@ -265,11 +274,10 @@ class Network {
       file << layer_offset[lyn] << " " << shapes[lyn] << std::endl;
 
 
-    file << "\n#axons bias layer conn_offset\n";
+    file << "\n#axons layer conn_offset\n";
     file << layers.size() << std::endl;
     for (int sn = 0; sn < axons.size(); sn++) {
       file << axons[sn] << " ";
-      file << bias_data[sn] << " ";
       file << layers[sn] << " ";
       file << conn_offset[sn];
       file  << std::endl;
@@ -326,8 +334,6 @@ class Network {
       int intread;
       file >> xread;
       axons.push_back(xread);
-      file >> xread;
-      bias_data.push_back(xread);
       file >> intread;
       layers.push_back(intread);
       file >> intread;
@@ -401,4 +407,4 @@ auto const_cf = [](double xcnst) {
 };
 
 
-#endif  // STRUCTURE_H_
+#endif  // INCLUDE_STRUCTURE_HPP_

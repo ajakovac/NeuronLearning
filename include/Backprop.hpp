@@ -1,10 +1,10 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
-#ifndef BACKPROP_H_
-#define BACKPROP_H_
+#ifndef INCLUDE_BACKPROP_HPP_
+#define INCLUDE_BACKPROP_HPP_
 
-#include "Structure.h"
 #include <vector>
+#include "Structure.hpp"
 
 // The backpropagation is a skin to the Network, it is not necessary for the
 // basic functionalities.
@@ -23,7 +23,6 @@ class DNetwork {
 
   // vectors of number_of_axons size
   std::vector<double> z;  // to store the derivative wrt. the axons
-  std::vector<double> dbias;  // to store the derivative wrt. the biass
 
   // the core of the backpropagation method: how to propagate the derivative
   // at a given site to earlier sites. Each layer should have such a function
@@ -32,7 +31,6 @@ class DNetwork {
   // first the functions to reach data
   Network* associatedNetwork() { return L;}
   double& Dsite(int sn) {return z[sn];}
-  double& Dbias(int sn) { return dbias[sn]; }
   double& Dconn(int sn, int cn) { return dconn[ L->getconnID(sn, cn)]; }
   double& Dconn(int cid) { return dconn[cid]; }
 
@@ -46,21 +44,18 @@ class DNetwork {
 
   // in the constructor we set no bp propagation
   explicit DNetwork(Network *Lin) :
-    L(Lin), dconn(Lin->nallConnections(), 0),
-    z(Lin->nSites(), 0), dbias(Lin->nSites(), 0) {}
+    L(Lin), dconn(Lin->nallConnections(), 0), z(Lin->nSites(), 0) {}
 
   // the gradient computing function accumlates the derivatives, so for
   // new learning process we have to reset all the derivatives.
   void reset() {
     for (auto& y : dconn) y = 0;
     for (auto& x : z) x = 0;
-    for (auto& x : dbias) x = 0;
   }
 
   void operator+=(const DNetwork &bpadd) {
     for (int n = 0; n < dconn.size(); ++n) dconn[n] += bpadd.dconn[n];
     for (int n = 0; n < z.size(); ++n) z[n] += bpadd.z[n];
-    for (int n = 0; n < dbias.size(); ++n) dbias[n] += bpadd.dbias[n];
   }
 };
 
@@ -68,7 +63,7 @@ class DNetwork {
 // nonlinear function. Its backpropagation can be described by the following
 // function, that uses the derivative of the nonlinear function with an argument
 // of the function value
-auto affine_nonlin_bp = [](std::function< double(double) > df) {
+auto affine_nonlin_bp = [](auto df) {
   return [=](DNetwork* BL, int an) {
     Network* L = BL->associatedNetwork();
     double dfn = df(L->axon(an));
@@ -76,8 +71,8 @@ auto affine_nonlin_bp = [](std::function< double(double) > df) {
     auto connfn = L->readConnection(an);
     auto dconnfn = BL->readDconn(an);
     double dy = BL->Dsite(an);
-    BL->Dbias(an) += dy*dfn;  // refresh the bias derivative
-    for (int cn = 0; cn< L->nConnections(an); cn++) {
+    int cnmax = L->nConnections(an);
+    for (int cn = 0; cn < cnmax; cn++) {
       // this is the site we are connected to
       int sn = snfn(cn);
       // refresh the connection derivative
@@ -168,4 +163,4 @@ auto d_KL_loss = [](std::vector<double>* wanted_output) {
 };
 
 
-#endif  // BACKPROP_H_
+#endif  // INCLUDE_BACKPROP_HPP_

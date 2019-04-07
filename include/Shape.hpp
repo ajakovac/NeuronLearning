@@ -1,7 +1,7 @@
-/* Copyright (C) AJ
+/* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
-#ifndef SHAPE_H_
-#define SHAPE_H_
+#ifndef INCLUDE_SHAPE_HPP_
+#define INCLUDE_SHAPE_HPP_
 // In this file we collect all routines that help to define a
 // multidimensional vector object. Shape is meant to describe the
 // geometry of a Tensor. We define multi_for that cycles through all
@@ -12,7 +12,7 @@
 #include <iostream>
 #include <ostream>
 #include <cmath>
-#include "Error.h"
+#include "Error.hpp"
 // ----------------------------------------------------------//
 // Here starts the definition of the shape class
 // ----------------------------------------------------------//
@@ -270,4 +270,4 @@ auto L2_dist = [](Shape sh1, Shape sh2) {
 
 
 
-#endif  // SHAPE_H_
+#endif  // INCLUDE_SHAPE_HPP_

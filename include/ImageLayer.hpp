@@ -1,13 +1,13 @@
-/* Copyright (C) AJ
- * Written by A. Jakovac 2018 */
-#ifndef IMAGELAYER_H_
-#define IMAGELAYER_H_
+/* Copyright (C) NeuronLearning_project
+ * Written by A. Jakovac 2019 */
+#ifndef INCLUDE_IMAGELAYER_HPP_
+#define INCLUDE_IMAGELAYER_HPP_
 
 #include <iostream>
 #include <vector>
 #include <SFML/System.hpp>
 #include <SFML/Graphics.hpp>
-#include "Structure.h"
+#include "Structure.hpp"
 
 constexpr int NCOLOR = 255;
 
@@ -23,7 +23,7 @@ void Image_to_Layer(Network *N, int lyn, sf::Image *img) {
       for (int j = 0; j < sh[1]; j++) {
         sf::Color clr = img->getPixel(i, j);
         int sn = N->getsiteID(lyn, {i, j});
-        N->axon(sn) =  static_cast<int>((clr.r + clr.g + clr.b)/(3*NCOLOR));
+        N->axon(sn) =  static_cast<double>((clr.r + clr.g + clr.b)/(3*NCOLOR));
       }
     }
   // there is only one color
@@ -32,7 +32,7 @@ void Image_to_Layer(Network *N, int lyn, sf::Image *img) {
       for (int j = 0; j < sh[1]; j++) {
         sf::Color clr = img->getPixel(i, j);
         int sn = N->getsiteID(lyn, {i, j, 0});
-        N->axon(sn) =  static_cast<int>((clr.r + clr.g + clr.b)/(3*NCOLOR));
+        N->axon(sn) =  static_cast<double>((clr.r + clr.g + clr.b)/(3*NCOLOR));
       }
     }
   // there are three colors
@@ -49,7 +49,7 @@ void Image_to_Layer(Network *N, int lyn, sf::Image *img) {
       }
     }
   }
-};
+}
 
 void Layer_to_Image(Network *N, int lyn, sf::Image *img) {
   Shape sh = N->layerShape(lyn);
@@ -100,4 +100,4 @@ void Layer_to_Image(Network *N, int lyn, sf::Image *img) {
   }
 }
 
-#endif  // IMAGELAYER_H_
+#endif  // INCLUDE_IMAGELAYER_HPP_
