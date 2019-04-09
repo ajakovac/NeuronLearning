@@ -1,0 +1,18 @@
+#include <string>
+
+#define DATASET_DIR "@DATASET_DIR@"
+#ifndef DATASET_DIR
+  #define DATASET_DIR "/home/jakovac/Work/AI/Datasets"
+#endif
+
+#define mnist_train_img "@DATASET_DIR@/mnist/train_images"
+#define mnist_train_lbl "@DATASET_DIR@/mnist/train_labels"
+#define mnist_test_img "@DATASET_DIR@/mnist/test_images"
+#define mnist_test_lbl "@DATASET_DIR@/mnist/test_labels"
+
+#define stl10_img "@DATASET_DIR@/stl10_binary/train_X.bin"
+#define stl10_lbl "@DATASET_DIR@/stl10_binary/train_y.bin"
+
+#define cifar10_data "@DATASET_DIR@/cifar-10-batches-bin/data_batch_1.bin"
+
+

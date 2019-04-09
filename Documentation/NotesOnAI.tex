@@ -1,0 +1,563 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{notestyle}
+
+\title{AI Notes}
+\author{AJ.}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Layered networks and backpropagation}
+\label{sec:lbp}
+
+\subsection{Setup of the learning system}
+
+The example we will use in this note is image manipulation, including
+image classification, pattern recognition, etc.. For that we use
+machine learning algorithms, in particular neural networks. Present
+day machine learning algorithms are functions that map
+\begin{equation}
+  f :  {\cal W} \times {\cal S} \to {\cal F},
+\end{equation}
+where ${\cal S}$ denotes the space of the orginial images (source),
+${\cal F}$ stands for the space of the result of the image
+manipulation (final result), and ${\cal W}$ denotes the space of
+parameters that can be tuned to change the functionality of the map.
+
+The source can be choosen to be ${\bm P}^d$, where the source image
+has $d$ independent unit (for an image with $n$ rows and $m$ columns
+$d=nm$), and the pixel information is an element of $\bm P$. Usually
+$\bm P$ can be taken isomorphic to either $\bm R^3$ if it consists of
+three colors, and the color information is continuous; or it is
+isomorphic to $[0...255]^3$ if the color information is an 8-bit
+integer.
+
+The space of the result of image manipulation ${\cal F}$ can be an
+image, too, ie. isomorphic to ${\bf P}^{d'}$ where $d'=n'm'$ if the
+final image has $n'$ rows and $m'$ columns; but it can be an abstract
+space of notions wich is $\bm N^n$ where $n$ is the number of the
+notions, and an integer number characterizes its weigth, ie. the
+probability that it describes correctly the image.
+
+The parameter space is ${\cal W}\sim \bm R^k$, where there are $k$
+parameters, each having a real number value. The parameters should be
+tuned to fix the functionality of the network, but neither of the
+parameters have initial preferences. 
+
+\subsection{Layered networks}
+
+Present day neural networks are organized in layers. That means that
+the full $f$ function is built up as composition from several
+functions. Each of these composition functions are of the form:
+\begin{equation}
+  \label{eq:layer}
+  f_k : {\cal W}_k \times {\cal S}_k \to {\cal A}_k,
+\end{equation}
+where ${\cal S}_k$ is the space of the inputs,
+${\cal A}_k$ is the space of the outputs (axons), and ${\cal W}$ is
+the parameter space. We will denote the elements of ${\cal W}_k$ and
+${\cal A}_k$ as
+\begin{equation}
+  w_{k}\in {\cal W}_k,\qquad   A_{k} \in {\cal A}_k.
+\end{equation}
+or in component notation
+\begin{equation}
+  w_{ki}\in {\cal W}_k,\qquad   A_{ka} \in {\cal A}_k.
+\end{equation}
+
+The complete $f$ function is a tree-like function composition, meaning
+that the input of the layer at level $k$ can be any of the outputs of
+layers $k'<k$. That means ${\cal S}_k=\cup_{\ell<k}{\cal A}_\ell$, or
+\begin{equation}
+  \label{eq:rec}
+  A_k = f_k(w, A_{k-1},A_{k-2},\dots A_0),
+\end{equation}
+where $A_0\equiv S$ is the original image, and the output of the
+complete network is $F=A_n$.
+
+\subsection{Learning as optimization}
+
+The learning mechanism is tuning the parameters in a way that the
+system provides an output closest to the expected one. The difference
+between the desired and the actual result can be characterized by some
+scalar number(s), for example a $\chi^2$ value. In general we have an
+evaluation step that compares $A_n$ with an optimal output and
+provides some error indicators. Let us call this function $L$ (loss or
+cost function):
+\begin{equation}
+  L : {\cal F}\times {\cal F} \to {\cal V},\qquad L(F,\bar F)\in{\cal
+    V}, 
+\end{equation}
+where $F$ is the actual output, $\bar F$ is the desired output,
+${\cal V}$ is the space of loss (error) indicators. Learning means to
+minimize each element of the error function $L$ by tuning the
+parameters of the network.
+
+Minimization can be performed by different methods, one of the most
+simple one is the steepest descent method. For that we consider one
+element of $L$ (ie. we assume that ${\cal V}$ is one dimensional), and
+take it as a function of the parameters of the network. We will modify
+the parameters of the network along the gradient of the $L$ surface:
+\begin{equation}
+  \delta w = \alpha \nabla L.
+\end{equation}
+Since in the linear approximation
+\begin{equation}
+  L(w -\delta w) \approx L(w) -\delta w \nabla L = L(w) - \gamma
+  \nabla L^2 <L(w),
+\end{equation}
+we can decrease the error as long as the linear approximation remains
+true. In practice $\nabla L$ has lots of small elements, then we
+gather the gradients from several input-output pairs. 
+
+\subsection{Computing the gradient: automatic derivation}
+
+For the computation of the gradient we use the hierarchical setup of
+the network \eqref{eq:rec} to write
+\begin{equation}
+  dL = \frac{\d L}{\d A_n} dA_n,\qquad dA_k = \frac{\d A_k}{\d w_k} d
+  w_k + \sum\limits_{\ell=0}^{k-1} \frac{\d A_k}{\d A_\ell} d A_\ell.
+\end{equation}
+We find that $A_{k<\ell}$ does not depend on $w_\ell$. Therefore
+\begin{equation}
+  \frac{\d A_k}{\d w_\ell}= \delta^{k\ell} \frac{\d A_\ell}{\d w_\ell} +
+  \sum\limits_{\ell_1=\ell}^{k-1} \frac{\d A_k}{\d A_{\ell_1}}
+  \frac{\d A_{\ell_1}}{\d w^\ell}.
+\end{equation}
+This means that the range of the sum becomes smaller by one at each
+recursion step, and it will terminate at some point, but at the end
+all terms are proportional to ${\d A_\ell}/{\d w_\ell}$. The explicit
+result is
+\begin{equation}
+  \frac{\d A_k}{\d w_\ell} = U^{k\ell} \frac{\d A_\ell}{\d w_\ell},
+\end{equation}
+where
+\begin{equation}
+  U^{k\ell} = \delta^{k\ell}+ \frac{\d A_k}{\d A_{\ell}}
+  + \sum\limits_{\ell<\ell_1<k} \frac{\d A_k}{\d A_{\ell_1}} \frac{\d
+    A_{\ell_1}}{\d A_{\ell}} +\!\!\!
+  \sum\limits_{\ell<\ell_2<\ell_1<k}\!\!\!\frac{\d A_k}{\d A_{\ell_1}} \frac{\d
+    A_{\ell_1}}{\d A_{\ell_2}} \frac{\d A_{\ell_2}}{\d A_{\ell}}+
+  \dots + \frac{\d A_k}{\d A_{k-1}}\frac{\d A_{k-1}}{\d A_{k-2}}\dots 
+  \frac{\d A_{\ell+1}}{\d A_{\ell}}.
+\end{equation}
+The desired gradient is finally
+\begin{equation}
+  \frac{\d L}{\d w_\ell} = \frac{\d L}{\d A_n} U^{n\ell} \frac{\d
+    A_\ell}{\d w_\ell}.
+\end{equation}
+
+The task is to compute $U^{n\ell}$. There are two simple recursion
+setups: forward and backward propagation. 
+
+\subsubsection{Backpropagation}
+
+For backpropagation the setup is simpler, since we can directly write
+up the recursion for $U^{n\ell}$
+\begin{equation}
+  U^{nn} = 1,\qquad U^{n\ell} = \sum\limits_{n> k \ge \ell} U^{nk}
+  \frac{\d A_{k}}{\d A_{\ell}}. 
+\end{equation}
+We start with $\ell=n$ with a unit matrix. At each step we decrease
+$\ell$ by one, then each terms in the sum is already known, finally we
+arrive at $\ell=1$, then all $U^{n\ell}$ is computed.
+
+\subsubsection{Forward differentiation}
+
+In the forward case we use the recursion expression
+\begin{equation}
+  U^{kk} = 1,\qquad U^{k\ell} = \sum\limits_{k\ge k'>\ell} \frac{\d A_k}{\d
+    A_{k'}}U^{k'\ell}.
+\end{equation}
+We start with $k=\ell$ with a unit matrix. At each step we increase
+$\ell$ by one, finally computing $U^{n\ell}$. Then we start a new
+recursion to compute $U^{n\ell'}$ for a different $\ell'$. As a result
+we compute all $U^{k\ell}$ matrices which is unnecessary. Only in very
+special cases can forward propagation be better than backpropagation.
+
+\subsubsection{Backpropagation algorithm}
+
+For the sake of completeness we write it out backpropagation in
+component notation, too, suppressing the explicit notation of index
+summation:
+\begin{equation}
+  U^{nn}_{ab} = \delta_{ab} ,\qquad U^{n\ell}_{ab} = \sum\limits_{n> k
+    \ge \ell} U^{nk}_{ac} \frac{\d A_{kc}}{\d A_{\ell
+      b}}, \qquad \frac{\d L}{\d w_{\ell i}} = \frac{\d L}{\d A_{na}}
+  U^{n\ell}_{ab} \frac{\d A_{\ell b}}{\d w_{\ell i}}.
+\end{equation}
+
+We can go in this case even a step further, and define a vector
+\begin{equation}
+  J_\ell = \frac{\d L}{\d A_{n}} U^{n\ell},
+\end{equation}
+for which we can set up the recursion
+\begin{equation}
+  \label{eq:backprop}
+  J_n = \frac{\d L}{\d A_{n}},\qquad J_\ell = \sum\limits_{n> k \ge
+    \ell} J_k \frac{\d A_{k}}{\d A_{\ell}},\qquad \frac{\d L}{\d
+    w_{\ell}} = J_\ell \frac{\d A_{\ell}}{\d w_{\ell}}.
+\end{equation}
+In the following we will use
+\begin{equation}
+  L=\frac12 \sum\limits_a\frac{(A_{na}-\bar A_{na})^2}{\sigma_a^2},
+\end{equation}
+then
+\begin{equation}
+  \label{eq:BPinit}
+  J_{na} = \frac{A_{na}-\bar A_{na}}{\sigma_a^2}.
+\end{equation}
+
+To perform this recursion we can apply the following algorithm
+\begin{enumerate}
+\item Each $k$ level must have an input slot for adding value to the
+  actual $J_k$ values. As we arrive to the $k$th level to process it,
+  the $J_k$ vector must be complete.
+\item In processing the $k$th level first we evaluate the gradient
+  vector from $J_n$, ie. we evaluate
+  \begin{equation}
+    \frac{\d L}{\d w_{\ell}} = J_\ell \frac{\d A_{\ell}}{\d w_{\ell}}.
+  \end{equation}
+  Second we list all $\ell<k$ layer depending on the $k$th layer, and
+  add to their actual $J_\ell$ vector the contribution
+  \begin{equation}
+    J_\ell \to J_\ell + J_k \frac{\d A_{k}}{\d A_{\ell}}.
+  \end{equation}
+\item We start the recursion with filling the input slot of the $n$th
+  level by $J_{na}$ coming from \eqref{eq:BPinit}.
+\item Process the levels from $n$ to $1$ in backward direction.
+\end{enumerate}
+
+
+The process of learning is the following:
+\begin{enumerate}
+\item use the original $w$ parameters to compute the state of the
+  network
+\item update the $(\nabla L)_{k} = \frac{\d L}{\d w_k}$ gradient
+  vector at each layer level $k$ with backpropagation
+\item go back to step 1 until the gradient is sensible
+\item change $w_{k}\to w_{k}-\alpha (\nabla L)_{k}$ with an
+  adequate $\alpha$ value
+\end{enumerate}
+
+\section{Layer types}
+
+In lot of architecture there are parallel layers that process the same
+input configuration, they do not communicate, and their outputs are
+processed independently. Then it is worth to pack these layers into a
+common one having some vector space output.
+
+To the earlier formalism it can be easily adapted, by thinking that
+the $a,\,b$ indeices are multi-indices, that is
+\begin{equation}
+  a = (n,m,\alpha),
+\end{equation}
+where $n,\,m$ denotes the 2D position of the object, $\alpha$ indexes
+the internal space.
+
+Thenll layer hierarchies can be built up from two basic layer types:
+collection layers and link (link layers). Their properties are the
+following.
+
+\subsection{Collection layer}
+
+Its main properties are
+\begin{itemize}
+\item Input: either fixed (source), or sum of outputs of earlier links.
+\item Performs a nonlinear operation on the inputs to produce the
+  output.
+\item Does not change geometry.
+\item Non-tunable, ie. it has a definit functionality.
+\end{itemize}
+
+Therefore the output of the $k$th collection layer can be computed as
+\begin{equation}
+  A_{ka} = f(\sum_{\ell<k} A_{\ell a}),
+\end{equation}
+where $f$ is a nonlinear function, $\ell$ runs over some of the
+links. There is now weight here, the backpropagation vector carried
+over is
+\begin{equation}
+  J_{\ell a} = J_{ka} f'(\sum_{\ell<k} A_{\ell a}).
+\end{equation}
+
+\subsection{Link}
+
+Its main properties are
+\begin{itemize}
+\item Input: output from one collection layer
+\item Performs linear operation on the inputs.
+\item Can change geometry.
+\item Tunable, the parameters of the linear operation can be changed.
+\item It is worth to put on GPU.
+\end{itemize}
+
+In basic formula for the output of layer $k$
+\begin{equation}
+  A_{ka} = \sum_b w_{ab} A_{\ell b} + \bar w_{a},
+\end{equation}
+where $\ell$ is a single collection layer with $\ell<k$, $w$ and $\bar
+w$ are parameters.
+
+Gradients of the weights
+\begin{equation}
+  \frac{\d L}{\d w_{ab}} = \sum_c J_c\frac{\d A_{kc}}{\d w_{ab}} = J_a
+  A_{\ell b},\qquad 
+  \frac{\d L}{\d \bar w_a} = \sum_c J_c\frac{\d A_{kc}}{\d \bar w_a} = J_a.
+\end{equation}
+
+The carried backpropagation vector:
+\begin{equation}
+  J_{\ell a} = \sum_c J_c \frac{\d A_{kc}}{\d A_{\ell a}} = \sum_c J_c
+  w_{cb}.
+\end{equation}
+
+Special types of link layers:
+
+\subsubsection{Convolution layer}
+
+A specific type of the link layers is convolution layer, where we make
+a distinction between the spatial (external) and internal indices. In
+the internal space we still have a full matrix multiplication, but in
+the external space we just perform a convolution.
+
+So let us denote
+\begin{equation}
+  A_{ka} = A_{ki\alpha},
+\end{equation}
+where $k$ is the layer number, $i$ is the external (multi) index and
+$\alpha$ is the internal index. Then we have
+\begin{equation}
+  A_{ki\alpha} = \sum_{j\beta} w_{j\alpha\beta} A_{\ell,i+j,\beta} +
+  \bar w_{\alpha} = \sum_{j\beta} w_{j-i,\alpha\beta} A_{\ell j\beta}
+  + \bar w_{\alpha}.
+\end{equation}
+Gradients of the weights
+\begin{equation}
+  \frac{\d L}{\d w_{i\alpha\beta}} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d w_{i\alpha\beta}} = \sum_{j}J_{j\alpha} A_{\ell,i+j,\beta},\qquad 
+  \frac{\d L}{\d \bar w_\alpha} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d \bar w_\alpha} = \sum_{j} J_{j\alpha}.
+\end{equation}
+
+The carried backpropagation vector:
+\begin{equation}
+  J_{\ell i\alpha} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d A_{\ell i\alpha }} = \sum_{j\gamma} J_{j\gamma}
+  w_{i-j,\gamma\alpha}.
+\end{equation}
+
+In case we have a geometry change, then it affects dimensions
+independently. Let us assume that we start from a dimension of
+$n_{in}$ sites, and end with a dimension with $n_{out}$ sites. We
+remark that if the convolution volume is $n_{conv}$, then the
+effective starting dimension is $n'_{in}=n_{in}-n_{conv}+1$. We run
+over the output sites one by one $i=0,1,\dots n_{out}-1$, and do a
+convolution starting at $i'$ site in the input layer. If
+$n'_{in}=n_{out}$ then $i'=i$, otherwise we have to find a map
+$i'(i)$.
+
+The average step in the input layer is
+\begin{equation}
+  r = \frac{n_{in}-1}{n_{out}-1}.
+\end{equation}
+We can simply define $i'(i) = [ri]$. Another solution that we
+concentrate to the center. Then we have to make $n_1$ times a step $[r]$
+and $n_2$ times a step $[r]+1$. The formulae determining them read
+\begin{equation}
+  n_1+n_2 =n_{out},\qquad [r] n_1+([r]+1) n_2 = n_{in},
+\end{equation}
+which means
+\begin{equation}
+  n_2 = n_{in} - [r] n_{out},\qquad n_1= ([r]+1]) n_{out}-n_{in}.
+\end{equation}
+We can then arrange the steps that we start with $[n_2/2]$ times
+$[r]+1$ long steps, then $n_1$ times $[r]$ long steps, finally
+$]n_2/2[$ times $[r]+1$ long steps.
+
+All in all, we will have an $i'(i)$ transformed multi-index that takes
+into account the geometry change, too. Then we have
+\begin{equation}
+  A_{ki\alpha} = \sum_{j\beta} w_{j\alpha\beta} A_{\ell,i'+j,\beta} +
+  \bar w_{\alpha} = \sum_{j\beta} w_{j-i',\alpha\beta} A_{\ell j\beta}
+  + \bar w_{\alpha}.
+\end{equation}
+Gradients of the weights
+\begin{equation}
+  \frac{\d L}{\d w_{i\alpha\beta}} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d w_{i\alpha\beta}} = \sum_{j}J_{j\alpha} A_{\ell,j'+i,\beta},\qquad 
+  \frac{\d L}{\d \bar w_\alpha} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d \bar w_\alpha} = \sum_{j} J_{j\alpha}.
+\end{equation}
+
+The carried backpropagation vector:
+\begin{equation}
+  J_{\ell i\alpha} = \sum_{j\gamma} J_{j\gamma} \frac{\d
+    A_{kj\gamma}}{\d A_{\ell i\alpha }} = \sum_{j\gamma} J_{j\gamma}
+  w_{i-j',\gamma\alpha}.
+\end{equation}
+This last expression can be easily performed if we define
+\begin{equation}
+  J'_{p\gamma}= \sum_j \delta_{j'p}J_{j\gamma},
+\end{equation}
+that can be built by running through the output indices $i$, and add
+$J_{i\gamma}$ to $J'_{i'\gamma}$. Then the backpropagation vector
+\begin{equation}
+  J_{\ell i\alpha} =  \sum_{j\gamma} J_{j\gamma}\sum_p \delta_{j'p}
+  w_{i-p,\gamma\alpha} =\sum_{p\gamma} J'_{p\gamma}
+  w_{i-p,\gamma\alpha}  =\sum_{j\gamma} J'_{i-j,\gamma} w_{j\gamma\alpha}. 
+\end{equation}
+
+
+\subsubsection{MaxPooling (downsampling) layers}
+
+To change scale it is worth to use pooling. It can be manifested as an
+averaging, using convolution layer with uniform weights, but it is
+also possible to realize it as max pooling, where the output is the
+maximum of some input values:
+\begin{equation}
+  A_{ka} = A_{\ell,b_a},\qquad \mathrm{where}\;
+  A_{\ell,b_a}=\max_{|b-a|<R} A_{\ell,b}.
+\end{equation}
+Pooling layers do not have internal gradients, and the incoming
+backpropagation vector $J_{ka}$ is simply copied to that index of the
+$\ell$th layer that provided the maximal $A_{\ell,b}$ value:
+\begin{equation}
+  J_{\ell,b} = \left\{
+    \begin{array}[c]{ll}
+      J_{ka},\quad&\mathrm{if}\quad b=b_a\cr
+      0,\quad&\mathrm{if}\quad b\neq b_a.\cr
+    \end{array}
+  \right.
+\end{equation}
+
+\section{Learning a set}
+
+What if we want that our network knows several input-output pairs?
+Assume we have $S_a$ inputs with corresponding $\bar F_a$ outputs for
+$a=1\dots N$, and our network provides a tuneable $F(w,S)$ result for
+an input $S$.
+
+What we have to do is to minimize the cumulative los:
+\begin{equation}
+  \chi^2 = \sum_{a=1}^N \frac{L(F(w,S_a),\bar F_a)}{\sigma_a^2},
+\end{equation}
+where $L$ is the loss function, $\sigma_a$ characterizes the
+reliability of the given input-output pair. If the input is damaged,
+or the output is not certain, we can qualify the corresponding pair as
+low reliability and weight it with high $\sigma_a$. The minimum of the
+cumulative loss with respect of the weights:
+\begin{equation}
+  \frac{\d\chi^2}{\d w_i} = \sum_{a=1}^N \frac{1}{\sigma_a^2}
+  \frac{\d L(F_a,\bar F_a)}{\d w_i},
+\end{equation}
+this latter we have already calculated before. To find the minimum we
+do a learning step
+\begin{equation}
+  w_i \to w_i - \alpha \frac{\d\chi^2}{\d w_i} 
+\end{equation}
+with some appropriate $\alpha$. 
+
+
+\section{Program details}
+
+Here we discuss a possible realization of the network above.
+
+\subsection{Vector spaces}
+
+\begin{itemize}
+\item There is no standardized way of treating objects with more indices. In
+  the present realization we represent the geometry of the layers as
+  an int vector 
+  \begin{center}
+    \texttt{class Geometry : public vector<int>}  
+  \end{center}
+  This class contains the $N_i$ dimensions (including both the
+  external and internal spaces), and it provides the ``basis
+  vectors'': $e_i = \prod_{j<i} N_j$. In addition it stores
+  $maxvalue=\prod_j N_j$.
+\item To single out an element we use multiindex
+  \begin{center}
+    \texttt{class MultiIndex : public vector<int>}  
+  \end{center}
+  The vector elements are the indices $0\le n_i<N_i$. It contains a
+  reference to the actual Geometry. It also provides the int form of
+  the index $i=\sum_j n_j e_j$. Multiindices can be added, multiplied
+  by an int. Range check should also be indluded.
+\item It is worth to create a container class that can treat
+  multiindices as indices:
+  \begin{center}
+    \texttt{class Vector : public vector<double>}
+  \end{center}
+  The only difference from a normal vector is that the $[.]$ operator
+  is overloaded in order to take a multiindex.
+\end{itemize}
+
+
+\begin{center}
+  \texttt{class LocalLayer : public Vector}
+\end{center}
+
+\begin{center}
+    \texttt{class Link : public Vector}
+\end{center}
+
+
+\section{Frequently used loss functions}
+\label{sec:FULoss}
+
+Here $A_a$ is the output os the last layer, $\bar F_a$ is the expected
+result.
+
+Quadratic loss:
+\begin{equation}
+  L= \frac12 \sum_a (A_a-\bar F_a)^2,\qquad \frac{\d L}{\d A_a} = A_a-\bar F_a.
+\end{equation}
+
+$\chi^2$ method: $\sigma_a^2$ means the error on the given notion,
+$\sigma^{-2}$ is proportional the relevance (importance) of the given data:
+\begin{equation}
+  L=  \sum_a \frac{(A_a-\bar F_a)^2}{2\sigma_a^2} ,\qquad \frac{\d
+    L}{\d A_a} = \frac{A_a-\bar F_a}{\sigma_a^2}.
+\end{equation}
+
+Cross-entropy loss: for output values $\in[0,1]$
+\begin{equation}
+  L=-\sum_a\left[ \bar F_a \ln A_a + (1-\bar F_a)\ln
+    (1-A_a)\right],\qquad \frac{\d L}{\d A_a} = -\frac{\bar F_a}{A_a} +
+  \frac{1-\bar F_a}{1-A_a} =  \frac{A_a-\bar F_a}{A_a(1-A_a)}.
+\end{equation}
+
+Exponential loss:
+\begin{equation}
+  L=  e^{\sum_a \frac{(A_a-\bar F_a)^2}{2\sigma_a^2} },\qquad
+  \frac{\d L}{\d A_a} = \frac{A_a-\bar F_a}{\sigma_a^2} L.
+\end{equation}
+
+Hellinger diastance:
+\begin{equation}
+  L=  \sum_a \frac{(\sqrt{A_a}-\sqrt{\bar F_a})^2}{\sigma_a},
+  \qquad \frac{\d L}{\d A_a} = \frac{\sqrt{A_a}-\sqrt{\bar
+      F_a}}{\sqrt{A_a}\sigma_a}.
+\end{equation}
+
+Kullback-Leibler divergence: for output values $\in[0,1]$
+\begin{equation}
+  L= \sum_a\left[ \bar F_a\ln\frac{\bar F_a}{A_a} + A_a-\bar
+    F_a\right],\qquad \frac{\d L}{\d A_a} = \frac{A_a-{\bar F_a}}{A_a}.
+\end{equation}
+
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

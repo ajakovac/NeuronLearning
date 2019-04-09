@@ -8,16 +8,13 @@
 #include "mnist.hpp"
 #include "Update.hpp"
 #include "Learning.hpp"
+#include "cmake_variables.hpp"
 
 int main(int argc, char const *argv[]) try {
   randiv.set_seed(10);
 
-  char img_name[] =
-    "/home/jakovac/Work/AI/Datasets/mnist/train_images";
-  char lbl_name[] =
-    "/home/jakovac/Work/AI/Datasets/mnist/train_labels";
   // we need the MNIST database for character recognition learning
-  MNIST_dataset mnist(img_name, lbl_name);
+  MNIST_dataset mnist(mnist_train_img, mnist_train_lbl);
   int nrows = mnist.height;
   int ncols = mnist.width;
   int numdat = 60000;

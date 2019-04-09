@@ -7,25 +7,20 @@
 #include "cifar_10.hpp"
 #include "stl_10.hpp"
 #include "mnist.hpp"
-
+#include "cmake_variables.hpp"
 
 int main() {
-  char cifar_data[] =
-    "/home/jakovac/Work/AI/Datasets/cifar-10-batches-bin/data_batch_1.bin";
-  CIFAR_10_dataset *d =
-    new CIFAR_10_dataset(cifar_data);
+  // std::string cifar_data =
+  //   DATASET_DIR + "cifar-10-batches-bin/data_batch_1.bin";
+  CIFAR_10_dataset *d = new CIFAR_10_dataset(cifar10_data);
 
-  char stl10_img[] =
-    "/home/jakovac/Work/AI/Datasets/stl10_binary/train_X.bin";
-  char stl10_lbl[] =
-    "/home/jakovac/Work/AI/Datasets/stl10_binary/train_y.bin";
+  // std::string stl10_img = DATASET_DIR + "stl10_binary/train_X.bin";
+  // std::string stl10_lbl = DATASET_DIR + "stl10_binary/train_y.bin";
   STL_10_dataset *s = new STL_10_dataset(stl10_img, stl10_lbl);
 
-  char mnist_img[] =
-    "/home/jakovac/Work/AI/Datasets/mnist/train_images";
-  char mnist_lbl[] =
-    "/home/jakovac/Work/AI/Datasets/mnist/train_labels";
-  MNIST_dataset *m = new MNIST_dataset(mnist_img, mnist_lbl);
+  // std::string mnist_img = DATASET_DIR + "mnist/train_images";
+  // std::string mnist_lbl = DATASET_DIR + "mnist/train_labels";
+  MNIST_dataset *m = new MNIST_dataset(mnist_train_img, mnist_train_lbl);
 
   auto update1 = [=](Image_View& v) {
     d->next();
