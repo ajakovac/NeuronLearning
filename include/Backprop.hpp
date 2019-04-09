@@ -54,8 +54,8 @@ class DNetwork {
   }
 
   void operator+=(const DNetwork &bpadd) {
-    for (int n = 0; n < dconn.size(); ++n) dconn[n] += bpadd.dconn[n];
-    for (int n = 0; n < z.size(); ++n) z[n] += bpadd.z[n];
+    for (unsigned int n = 0; n < dconn.size(); ++n) dconn[n] += bpadd.dconn[n];
+    for (unsigned int n = 0; n < z.size(); ++n) z[n] += bpadd.z[n];
   }
 };
 
@@ -92,14 +92,14 @@ auto dtanh = [](double hght, double wdth) {
   return [=](double x) {return wdth/hght*(hght*hght-x*x); };
 };
 
-auto dexp = [](double hght, double wdth) {
+auto dexp = [](double, double wdth) {
   return [=](double x) {return wdth*x;};
 };
 
 // derivatives of the maxpool and dropout
 // can also be used as a normal affine_nonlin_bp
 // with the identity function derivative:
-auto d_id = [](double x){return 1;};
+auto d_id = [](double){return 1;};
 
 
 //////////////////////////////////////////////////////////////////////////

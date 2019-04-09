@@ -66,7 +66,8 @@ class Network {
   int nLayers() {return layer_offset.size();}
   // number of sites in a layer lyn
   int nSitesinLayer(int lyn) {
-    if (lyn== layer_offset.size()-1) return axons.size()-layer_offset[lyn];
+    if (lyn== static_cast<int>(layer_offset.size())-1) 
+      return axons.size()-layer_offset[lyn];
     return layer_offset[lyn+1]-layer_offset[lyn];
   }
   // gives layer ID to that site sn belongs to
@@ -83,16 +84,16 @@ class Network {
   int nallConnections() {return conn.size();}
   // number of connections of site sn
   int nConnections(int sn) {  // number of connections for a site
-    if (sn== axons.size()-1) return conn.size()-conn_offset[sn];
+    if (sn== static_cast<int>(axons.size())-1) return conn.size()-conn_offset[sn];
     return conn_offset[sn+1]-conn_offset[sn];
   }
   // connection ID of the cn-th connection of site sn
   int getconnID(int sn, int cn) { return conn_offset[sn]+cn; }
   // get the site the connection belongs to
   int getconnSite(int cid) {
-    for (int nn = 1; nn < axons.size(); ++nn)
+    for (int nn = 1; nn < static_cast<int>(axons.size()); ++nn)
       if (conn_offset[nn] < cid) return(nn-1);
-      return(axons.size()-1);
+    return(axons.size()-1);
   }
   // the connection value from conn ID
   double& siteConnection(int connID) {return conn[connID];}
@@ -168,7 +169,7 @@ class Network {
   template < typename T >
   void applytoLayer(int lyn, T F) {
     int nmax;
-    if (lyn == layer_offset.size()-1) nmax = axons.size();
+    if (lyn == static_cast<int>(layer_offset.size())-1) nmax = axons.size();
     else
       nmax = layer_offset[lyn+1];
     for (int n = layer_offset[lyn]; n < nmax; n++) F(n);
@@ -235,13 +236,13 @@ class Network {
     file << "#Saving network\n";
 
     file << "\n#laynum\toffset\tshape\n";
-    for (int lyn = 0; lyn < layer_offset.size(); lyn++)
+    for (unsigned int lyn = 0; lyn < layer_offset.size(); ++lyn)
       file << lyn << "\t" << layer_offset[lyn]<< "\t"
            << shapes[lyn] << std::endl;
 
 
     file << "\n#num\taxons\toffset\tlayer\tposition\tconn_offset\n";
-    for (int sn = 0; sn < axons.size(); sn++) {
+    for (unsigned int sn = 0; sn < axons.size(); ++sn) {
       file << sn << "\t" << axons[sn] <<"\t";
       file << layers[sn] << "\t";
       file << sitePos(sn) << "\t\t" << conn_offset[sn];
@@ -249,9 +250,9 @@ class Network {
     }
 
     file << "\n#nconn\tconnto\tpos\tfrom\tpos\tconnstrength\n";
-    for (int sn = 0; sn < axons.size(); sn++) {
+    for (int sn = 0; sn < static_cast<int>(axons.size()); sn++) {
       int cnmax = conn.size();
-      if (sn < axons.size()-1) cnmax = conn_offset[sn+1];
+      if (sn < static_cast<int>(axons.size())-1) cnmax = conn_offset[sn+1];
       for (int cn = conn_offset[sn]; cn < cnmax; cn++) {
         file << cn << "\t" << sn << "\t" << sitePos(sn) <<"\t";
         file << connsite[cn] << "\t" << sitePos(connsite[cn]);
@@ -270,13 +271,13 @@ class Network {
 
     file << "\n#layer_offset shape\n";
     file << layer_offset.size() << std::endl;
-    for (int lyn = 0; lyn < layer_offset.size(); lyn++)
+    for (unsigned int lyn = 0; lyn < layer_offset.size(); lyn++)
       file << layer_offset[lyn] << " " << shapes[lyn] << std::endl;
 
 
     file << "\n#axons layer conn_offset\n";
     file << layers.size() << std::endl;
-    for (int sn = 0; sn < axons.size(); sn++) {
+    for (unsigned int sn = 0; sn < axons.size(); sn++) {
       file << axons[sn] << " ";
       file << layers[sn] << " ";
       file << conn_offset[sn];
@@ -285,7 +286,7 @@ class Network {
 
     file << "\n#connectedsite connstrength\n";
     file << conn.size() << std::endl;
-    for (int cn = 0; cn < conn.size(); ++cn) {
+    for (unsigned int cn = 0; cn < conn.size(); ++cn) {
       file << connsite[cn]  << " ";
       file << conn[cn];
       file << std::endl;
@@ -365,7 +366,7 @@ class Network {
 
 // site list functions: this lists all the sites of a layer
 auto alllayer = [](int lyn) {
-  return [=](Network* N, int an, std::vector<int> *vs){
+  return [=](Network* N, int, std::vector<int> *vs){
     N->applytoLayer(lyn, [&](int n){ vs->push_back(n); });
   };
 };
