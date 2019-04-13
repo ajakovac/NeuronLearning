@@ -66,7 +66,7 @@ class Network {
   int nLayers() {return layer_offset.size();}
   // number of sites in a layer lyn
   int nSitesinLayer(int lyn) {
-    if (lyn== static_cast<int>(layer_offset.size())-1) 
+    if (lyn== static_cast<int>(layer_offset.size())-1)
       return axons.size()-layer_offset[lyn];
     return layer_offset[lyn+1]-layer_offset[lyn];
   }
@@ -84,7 +84,8 @@ class Network {
   int nallConnections() {return conn.size();}
   // number of connections of site sn
   int nConnections(int sn) {  // number of connections for a site
-    if (sn== static_cast<int>(axons.size())-1) return conn.size()-conn_offset[sn];
+    if (sn== static_cast<int>(axons.size())-1)
+      return conn.size()-conn_offset[sn];
     return conn_offset[sn+1]-conn_offset[sn];
   }
   // connection ID of the cn-th connection of site sn
@@ -294,7 +295,7 @@ class Network {
     file.close();
   }
 
-  // load the network
+  // load the network from scratch
   void load(const char* filename) {
     std::ifstream file;
     std::string line;
@@ -356,6 +357,78 @@ class Network {
       conn.push_back(xread);
     }
 
+    file.close();
+  }
+
+
+  // fill the axon and connection values assuming the same structure
+  void fill(const char* filename) {
+    std::ifstream file;
+    std::string line;
+    file.open(filename);
+    int c;
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
+    int lynum;
+    file >> lynum;
+    if (lynum != layer_offset.size())
+      throw(Error("Bad network data file!"));
+
+    for (int ly = 0; ly < lynum; ++ly) {
+      int intread;
+      file >> intread;
+      // layer_offset.push_back(intread);
+      std::vector<int> shaperead;
+      char chr;
+      file >> chr;
+      while (chr != ')') {
+        file >> intread;
+        shaperead.push_back(intread);
+        file >> std::ws;
+        file >> chr;
+      }
+      // shapes.push_back(Shape(shaperead));
+    }
+
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
+    int axnum;
+    file >> axnum;
+    if (axnum != axons.size())
+      throw(Error("Bad network data file!"));
+
+    for (int an = 0; an < axnum; ++an) {
+      double xread;
+      int intread;
+      file >> xread;
+      axons[an] = xread;
+      file >> intread;
+      // layers.push_back(intread);
+      file >> intread;
+      // conn_offset.push_back(intread);
+    }
+
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
+    int connum;
+    file >> connum;
+    if (connum != conn.size())
+      throw(Error("Bad network data file!"));
+
+    for (int cn = 0; cn < connum; ++cn) {
+      double xread;
+      int intread;
+      file >> intread;
+      // connsite.push_back(intread);
+      file >> xread;
+      conn[cn] = xread;
+    }
 
     file.close();
   }

@@ -44,15 +44,21 @@ int main(int argc, char* argv[]) {
   update(&ntw);
   ntw.save("mynet.ntw");
 
-  // test also a larger layer (but do not save it)
-  int lyl1 = ntw.AddLayer({1000});
-  int lyl2 = ntw.AddLayer({1000});
-  ntw.ConnectLastLayer(alllayer(lyl1), normal_cf(0.0, 1.0));
+  // Test the fill function
+  ntw.fill("mynet.ntw");
+  ntw.save("mynet_refilled.ntw");
 
   Network nt1;
   std::cout << "Read file: mynet.ntw" << std::endl;
 
   nt1.load("mynet.ntw");
   nt1.save("mynet_copy.ntw");
+
+  // test also a larger layer (but do not save it)
+  int lyl1 = ntw.AddLayer({1000});
+  int lyl2 = ntw.AddLayer({1000});
+  ntw.ConnectLastLayer(alllayer(lyl1), normal_cf(0.0, 1.0));
+
+
   return 0;
 }
