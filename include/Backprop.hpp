@@ -109,7 +109,7 @@ auto d_id = [](double){return 1;};
 auto d_pnorm_loss = [](int p, std::vector<double>* wanted_output) {
   return [=](DNetwork* BL, int sn) {
     Network* L = BL->associatedNetwork();
-    for (int i = 0; i < L->nConnections(sn); i++) {
+    for (unsigned int i = 0; i < L->nConnections(sn); i++) {
       double xi = L->siteConnectedValue(sn, i) - (*wanted_output)[i];
       if (p > 1) {
         BL->Dsite(L->siteConnectedSite(sn, i)) +=

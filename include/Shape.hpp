@@ -47,8 +47,8 @@ class Shape : public Position {
   Shape(std::initializer_list<int> l) : Position(l) {_make_e();}
   explicit Shape(std::vector<int> v) : Position(v) {_make_e(); }
   // capacity of the shape
-  int vol() const {
-    int n = 1;
+  unsigned int vol() const {
+    unsigned int n = 1;
     for (auto i : *this) n*=i;
     return n;
   }

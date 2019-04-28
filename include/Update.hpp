@@ -54,7 +54,7 @@ auto exp_fn = [](double hght, double wdth) {
 auto maxpool_update = [](Network* N, int sn) {
   double res = N->siteConnectedValue(sn, 0);
   int si = 0;
-  for (int i = 1; i < N->nConnections(sn); ++i) {
+  for (unsigned int i = 1; i < N->nConnections(sn); ++i) {
     double r1 = N->siteConnectedValue(sn, i);
     if (r1 > res) {
       res = r1;
@@ -62,7 +62,7 @@ auto maxpool_update = [](Network* N, int sn) {
     }
   }
   // we flag the maximum index connection by 1
-  for (int i = 0; i < N->nConnections(sn); ++i)
+  for (unsigned int i = 0; i < N->nConnections(sn); ++i)
     N->siteConnection(sn, i) = 0;
   N->siteConnection(sn, si) = 1;
 
@@ -97,7 +97,7 @@ auto dropout_update = [](double* p) {
 auto pnorm_loss = [](int p, std::vector<double>* wanted_output) {
   return [=](Network* N, int sn) {
     double diff = 0.0;
-    for (int i = 0; i < N->nConnections(sn); ++i) {
+    for (unsigned int i = 0; i < N->nConnections(sn); ++i) {
       double dx = std::fabs(N->siteConnectedValue(sn, i) - (*wanted_output)[i]);
       diff += std::pow(dx, p);
     }
@@ -109,10 +109,10 @@ auto pnorm_loss = [](int p, std::vector<double>* wanted_output) {
 auto normalized_pnorm_loss = [](int p, std::vector<double>* wanted_output) {
   return [=](Network* N, int sn) {
     double nrm = 0;
-    for (int i = 0; i < N->nConnections(sn); ++i)
+    for (unsigned int i = 0; i < N->nConnections(sn); ++i)
       nrm += N->siteConnectedValue(sn, i);
     double diff = 0.0;
-    for (int i = 0; i < N->nConnections(sn); ++i) {
+    for (unsigned int i = 0; i < N->nConnections(sn); ++i) {
       double dxi = N->siteConnectedValue(sn, i)/nrm - (*wanted_output)[i];
       diff += std::pow(std::fabs(dxi), p);
     }
@@ -124,10 +124,10 @@ auto normalized_pnorm_loss = [](int p, std::vector<double>* wanted_output) {
 auto KL_loss = [](std::vector<double>* wanted_output) {
   return [=](Network* N, int sn) {
     double nrm = 0;
-    for (int i = 0; i < N->nConnections(sn); ++i)
+    for (unsigned int i = 0; i < N->nConnections(sn); ++i)
       nrm += N->siteConnectedValue(sn, i);
     double KLdiv = 0;
-    for (int i = 0; i < N->nConnections(sn); ++i) {
+    for (unsigned int i = 0; i < N->nConnections(sn); ++i) {
       double x = N->siteConnectedValue(sn, i);
       double s = x/(nrm* (*wanted_output)[i]);
       KLdiv += x*std::log(s*s);

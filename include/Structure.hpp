@@ -56,24 +56,28 @@ class Network {
   // get the axon value from site ID sn
   double& axon(int sn) {return axons[sn];}
   // get the axon value from layer ID and relative index
+  double axon(int sn) const {return axons[sn];}
+  // get the axon value from layer ID and relative index
   double& axon(int lyn, int lyindex) {
     return axons[layer_offset[lyn] + lyindex];}
+  double axon(int lyn, int lyindex) const {
+    return axons[layer_offset[lyn] + lyindex];}
   // site ID from layer number and relative index
-  int getsiteID(int lyn, int sli) { return layer_offset[lyn] + sli; }
+  std::size_t getsiteID(int lyn, int sli) { return layer_offset[lyn] + sli; }
   // number of all sites
-  int nSites() {return axons.size();}
+  std::size_t nSites() {return axons.size();}
   // number of layers
-  int nLayers() {return layer_offset.size();}
+  std::size_t nLayers() const {return layer_offset.size();}
   // number of sites in a layer lyn
-  int nSitesinLayer(int lyn) {
+  std::size_t nSitesinLayer(int lyn) const {
     if (lyn== static_cast<int>(layer_offset.size())-1)
       return axons.size()-layer_offset[lyn];
     return layer_offset[lyn+1]-layer_offset[lyn];
   }
   // gives layer ID to that site sn belongs to
-  int sitelayerID(int sn) { return layers[sn]; }
+  int sitelayerID(int sn) const { return layers[sn]; }
   // index of the site within its layer
-  int sitelayerIndex(int sn) {
+  int sitelayerIndex(int sn) const {
     return sn-layer_offset[ layers[sn]]; }
 
   //////////////////////////////////////////////////////////////
@@ -81,9 +85,9 @@ class Network {
   //////////////////////////////////////////////////////////////
 
   // number of all connections
-  int nallConnections() {return conn.size();}
+  std::size_t nallConnections() {return conn.size();}
   // number of connections of site sn
-  int nConnections(int sn) {  // number of connections for a site
+  std::size_t nConnections(int sn) {  // number of connections for a site
     if (sn== static_cast<int>(axons.size())-1)
       return conn.size()-conn_offset[sn];
     return conn_offset[sn+1]-conn_offset[sn];
@@ -180,7 +184,7 @@ class Network {
   template< typename T>
   void forallConnectionsinLayer(int lyn, T F) {
     int nmax;
-    if (lyn == layer_offset.size()-1) nmax = axons.size();
+    if (lyn == static_cast<int>(layer_offset.size()-1)) nmax = axons.size();
     else
       nmax = layer_offset[lyn+1];
     for (int n = layer_offset[lyn]; n < nmax; n++) {
@@ -371,12 +375,12 @@ class Network {
     while ((c =file.peek()) == '#' || c == '\n') {
       std::getline(file, line);
     }
-    int lynum;
+    unsigned int lynum;
     file >> lynum;
     if (lynum != layer_offset.size())
       throw(Error("Bad network data file!"));
 
-    for (int ly = 0; ly < lynum; ++ly) {
+    for (unsigned int ly = 0; ly < lynum; ++ly) {
       int intread;
       file >> intread;
       // layer_offset.push_back(intread);
@@ -396,12 +400,12 @@ class Network {
     while ((c =file.peek()) == '#' || c == '\n') {
       std::getline(file, line);
     }
-    int axnum;
+    unsigned int axnum;
     file >> axnum;
     if (axnum != axons.size())
       throw(Error("Bad network data file!"));
 
-    for (int an = 0; an < axnum; ++an) {
+    for (unsigned int an = 0; an < axnum; ++an) {
       double xread;
       int intread;
       file >> xread;
@@ -416,12 +420,12 @@ class Network {
     while ((c =file.peek()) == '#' || c == '\n') {
       std::getline(file, line);
     }
-    int connum;
+    unsigned int connum;
     file >> connum;
     if (connum != conn.size())
       throw(Error("Bad network data file!"));
 
-    for (int cn = 0; cn < connum; ++cn) {
+    for (unsigned int cn = 0; cn < connum; ++cn) {
       double xread;
       int intread;
       file >> intread;
