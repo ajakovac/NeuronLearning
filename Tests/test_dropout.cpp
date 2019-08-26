@@ -21,8 +21,8 @@ int main(int argc, char const *argv[]) {
   // base layer, where external input comes in
   int   basely = ntw.AddLayer({5});
   // we fill the base layer with random numbers
-  ntw.applytoLayer(basely, [&](int n){ ntw[n] = 1.0; });
-  // ntw.applytoLayer(basely, [&](int n){ ntw[n] = normal_dist(0.0, 1.0)(); });
+  ntw.forallSitesinLayer(basely, [&](int n){ ntw[n] = 1.0; });
+  // ntw.forallSitesinLayer(basely, [&](int n){ ntw[n] = normal_dist(0.0, 1.0)(); });
 
   // Here come the internal (hidden) layers with arbitrary number
   int      ly1 = ntw.AddLayer({3});
@@ -73,10 +73,10 @@ int main(int argc, char const *argv[]) {
   auto update = [=](Network* L) {
     // basely is not updated
     randiv.set_seed(10);  // to be able to reproduce the same runs
-    L->applytoLayer(ly1, [=](int n){      ly1update(L, n); });
-    L->applytoLayer(ly2, [=](int n){      ly2update(L, n); });
-    // L->applytoLayer(resultly, [=](int n){ resupdate(L, n); });
-    L->applytoLayer(lossly, [=](int n){   lossupdate(L, n); });
+    L->forallSitesinLayer(ly1, [=](int n){      ly1update(L, n); });
+    L->forallSitesinLayer(ly2, [=](int n){      ly2update(L, n); });
+    // L->forallSitesinLayer(resultly, [=](int n){ resupdate(L, n); });
+    L->forallSitesinLayer(lossly, [=](int n){   lossupdate(L, n); });
   };
 
   // we collect the important functions in the beginning
@@ -117,10 +117,10 @@ int main(int argc, char const *argv[]) {
   auto backpropagate = [=](DNetwork *BPL) {
     Network *L = BPL->associatedNetwork();
     BPL->Dsite(L->nSites()-1) = 1.0;  // start with unit derivative
-    L->applytoLayer(lossly, [=](int n){ lossbp(BPL, n); });
-    // L->applytoLayer(resultly, [=](int n){ resbp(BPL, n); });
-    L->applytoLayer(ly2, [=](int n){ ly2bp(BPL, n); });
-    L->applytoLayer(ly1, [=](int n){ ly1bp(BPL, n); });
+    L->forallSitesinLayer(lossly, [=](int n){ lossbp(BPL, n); });
+    // L->forallSitesinLayer(resultly, [=](int n){ resbp(BPL, n); });
+    L->forallSitesinLayer(ly2, [=](int n){ ly2bp(BPL, n); });
+    L->forallSitesinLayer(ly1, [=](int n){ ly1bp(BPL, n); });
     // the base layer does not need backpropagation
   };
 
@@ -133,9 +133,9 @@ int main(int argc, char const *argv[]) {
   auto partial_update = [=](Network* L, int ly) {
     randiv.set_seed(10);  // the same seed as before
     // ly0 is not updated
-    if (ly<= ly1) L->applytoLayer(ly1, [=](int n){ ly1update(L, n); });
-    if (ly<= ly2) L->applytoLayer(ly2, [=](int n){ ly2update(L, n); });
-    if (ly<= lossly) L->applytoLayer(lossly, [=](int n){ lossupdate(L, n); });
+    if (ly<= ly1) L->forallSitesinLayer(ly1, [=](int n){ ly1update(L, n); });
+    if (ly<= ly2) L->forallSitesinLayer(ly2, [=](int n){ ly2update(L, n); });
+    if (ly<= lossly) L->forallSitesinLayer(lossly, [=](int n){ lossupdate(L, n); });
   };
   Numder ndntw(&ntw, partial_update);
   ndntw.getD();
@@ -156,7 +156,7 @@ int main(int argc, char const *argv[]) {
   for (int n = ntw.nSites()-1; n>= 0; --n) {
     int lyn = ntw.sitelayerID(n);
     std::cout << n << "(" << lyn << ")";
-    std::cout << "\taxon=" << ntw.axon(n);
+    std::cout << "\taxon=" << ntw.site(n);
     std::cout << std::endl;
     if (pr_Dsite[lyn]) {
       std::cout << "\tz=" << bpntw.Dsite(n) << " -- "
@@ -168,7 +168,7 @@ int main(int argc, char const *argv[]) {
     if (pr_Dconn[lyn]) {
       for (int cid = 0; cid < ntw.nConnections(n); cid++) {
         std::cout << "\t\t[" << cid << "]";
-        std::cout << "\tconn=" << ntw.siteConnection(n, cid);
+        std::cout << "\tconn=" << ntw.connection(n, cid);
         std::cout << "\tdconn=" << bpntw.Dconn(n, cid);
         std::cout << " -- " << ndntw.dconn[ ntw.getconnID(n, cid)] << std::endl;
         error2+= sq(bpntw.Dconn(n, cid)-ndntw.dconn[ ntw.getconnID(n, cid)]);

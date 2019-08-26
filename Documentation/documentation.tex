@@ -5,6 +5,7 @@
 \usepackage{amssymb}
 \usepackage{bm}
 \usepackage{hyperref}
+\usepackage{graphicx}
 \usepackage{notestyle}
 \author{A. Jakovac}
 \title{NeuronLearning documentation}
@@ -303,12 +304,212 @@ This means that, especially in the beginning, without the correction term we wou
 
 In nature there is no supervision to teach the network to adapt to the environment. Moreover, the backpropagation of the information to the level of connections is also not possible. Instead, an autonomous system works where the neurons learn from their environment, and the learning of the complete nerve system shows up as a cumulative, collective effect.
 
-The way the neurons know about the usefullness of their work is through the slow and rude hormone system. If the adaptation to the environment of the given animal is not appropriate, then there show up diferent problems, like lack of resources. To inform the nerve system about this failure the hormone system produces adrenaline. The presence of the stress hormone directs the individual neurons to change their local environment, but not towards some unknown goal, but only in a random way. If the stress decreases, the indivuduum knows that the efforts for improvements were correct.
+The way the neurons know about the usefullness of their work is through the slow and rude hormone system. If the adaptation to the environment of the given animal is not appropriate, then there show up diferent problems, like lack of resources. To inform the nerve system about this failure the hormone system produces adrenaline. The presence of the stress hormone directs the individual neurons to change their local environment, but not towards some unknown goal, but only in a random way. If the stress decreases, the indivuduum knows that the efforts for improvements were correct. The adrenaline is just one example how the feedback from the global environment appears in the nerve system, but all feedbacks happen through hormonal changes.
 
-The adrenaline is just one example how the feedback from the global environment appears in the nerve system, but all feedback happens through hormonal changes.
+The hormonal feedback, however, only modifies the neuron-level adapting mechanisms. If we try imagine, what it can be, we can not think too complicated mechanisms, because the information available for a given neuron is very poor. The only thing a neuron can do is to change its connections in a way that it ``feels itself'' the best possible.
+
+\subsection{The neuron model}
+
+In this approach the individual neurons are basically separate, independent entities. The operation of the complete network emerges as an effective dynamics coming from the dynamics of the individual neurons. Therefore it is crucial that the neurons have an operation program that supports the goal of the complete network.
+
+\subsubsection{A semi-realistic neuron model}
+
+The neurons have dendrites that collect information from its neighborhood, like the affine function used before. In formula
+\begin{equation}
+  \label{eq:z}
+  z = \sum_{k=1}^K w_k x_k,
+\end{equation}
+where $w_k$s are the weights and $x_k$s are the axons of the connected neurons. The weights can be positive or negative (excitatory and inhibitory connections), and have a maximal absolute value $|w|<w_{max}$. With rescaling we can always achieve $w_{max}=1$. 
+
+According to the input $z$ the neuron has three ``states'': an inactive, a proportional and a saturated state. In the inactive state the axon (output) is zero (or smaller than a certain value); in the proportional case the output is a monotonous function of $z$; in the saturated state the axon value is one (or larger than a certain value and smaller than one). In formula
+\begin{equation}
+  y(z) \rightarrow \left\{
+    \begin{array}[c]{ll}
+      \in [0,\,y_{min}],\qquad& \mathrm{if}\; z<z_{min}\cr
+      =\sigma(z),\qquad &\mathrm{if}\; z_{min}<z<z_{max}\cr
+      \in [y_{max},\,1],\qquad& \mathrm{if}\; z>z_{max},\cr
+    \end{array}
+  \right.
+\end{equation}
+where $\sigma$ is monotonous, $\sigma(z_{min})=y_{min},\, \sigma(z_{max})=y_{max}$ and $0\le y_{min}\le y_{max}\le1$. To simplify treatement we will use a constant-linear realization:
+\begin{equation}
+  \sigma(z) = \Theta(z_{min}<z<z_{max}) \frac{z-z_{min}}{z_{max}-z_{min}} + \Theta(z>z_{max}).
+\end{equation}
+The plot can be seen in Fig.~\ref{fig:actfunc1}
+\begin{figure}[htbp]
+  \label{fig:actfunc1}
+  \centerline{\includegraphics[width=6cm]{actfunc1}}
+  \caption{The activation function for $z_{min}=0$, $z_{max}=0.8$.}
+\end{figure}
 
 
+We do not know exactly the way the neurons are adapted to their environment. Thus here we will use a simple model: \textbf{each neuron tries to reach the proportional regime by adjusting their weights}. We will prove that in this way we can in fact create a system that is sensitive to some ``features'' of the input.
 
+We will call a neuron that is in the proportional state (in its operational regime) \emph{fit}, a neuron that is in the $y=0$ regime \emph{negatively stressed}, in the $y=1$ regime \emph{positively stressed}. The above strategy means that a stressed neuron tries to reach its fit state. More precisely we will require that the output is in a narrow vicinity of zero $y\in[\ep, dy]$ where $\ep\ll dy\ll 1$. This interval we be called the strict operating regime, while the fit interval also called weak operating regime.
+
+A natural strategy for the networ could be to set to near zero all of the weights, this automatically forces the output to be small positive value. To avoid it we will require that
+\begin{equation}
+  \frac1K\sum_{k=1}^K w_k^2 = 1.
+\end{equation}
+
+The practical meaning of the above strategy is the folowing:
+\begin{itemize}
+\item if $y$ lies in the strict operating regime, then we say that the neuron \emph{fully/strictly identifies} its input
+\item if $y$ remains in the weak operating regime, then we say that the neuron \emph{weaky identifies} its input
+\item if the neuron is stressed, then the neuron misidentifies, or \emph{vetoes} the input. 
+\end{itemize}
+
+What is the probability that the neuron identifies its input \emph{by chance}? Let us assume that we have $K$ input neurons, and choose $z_{min}=0$. Let us first use the very simple assumption that all the weights are Gaussian distributed around zero; since they are normalized, each weight has a Gaussian distribution with $0.22\sqrt{K}$ width (if $K$ is large enough). Assuming that the axons are all have the same value $x$, then $z$ has a distribution of $x\sqrt{K}$. The condition that the neuron identifies its input is that $0<z<z_{max}$. This is
+\begin{equation}
+  \mathop{\mathrm{erf}}(\frac {z_{max}}{x\sqrt{K}})\approx \frac{2z_{max}}{x\sqrt{K\pi}}.
+\end{equation}
+If $K=20,\,x=0.5$ and $z_{max}=0.1$, this is about $5\%$, but for $x=0.1$ it is just $25\%$. If $x=0.01$ then the probability that a random input is identified is $99.84\%$. That can be interpreted that if the identification of the input occured before (i.e. the earlier axons have small values), than all further layers are unnecessary.
+
+What is said so far, applies for a single neuron. If we have $N$ independent neurons, the probability that \emph{all} identify the input, is $P_1^N$. If we pose a condition that we need at most $P$ probability for misidentification, then
+\begin{equation}
+  N=\frac{\log P}{\log P_1}.
+\end{equation}
+Using the above examples, if we want $P=10^{-20}$, and have $K=20,\,x=0.5$ and $z_{max}=0.1$, then we need $N\ge16$ is already enough. For $x=0.1$ we need $N\ge34$ which is still not a very restrictive number. For $x=0.01$, however, we would need $N\approx 30000$ independent neurons, which is already impossible.
+
+\subsubsection{Backpropagation learning}
+
+Let us have a training set $X$ containing the subset we want to learn $X_1\subset X$, and the rest $X_2 = X\setminus X$. We want to develop a network that maps all $x\in X_1$ to a D-dimensional sphere around zero. We may also want that we map $X_2$ to a shell with radius $R$. The network therefore is a function
+\begin{equation}
+  y_i = N_i(w,x),\qquad i=1,\dots,D,\qquad \frac1K\sum_{k=1}^K w_{k\ell}^2 = 1,\;\forall \ell
+\end{equation}
+where $\ell$ are the layer indices, $w$ are the weights and $x$ are the inputs.
+
+We can create an expected output: if $x\in X_1$, then $\sum_i y_i^2=0$, if $x\in X_2$ then $\sum_i y_i^2=R^2$. This can summarized into a loss function
+\begin{equation}
+  L(r) = \frac14 (y^2 - r^2)^2,\qquad y^2 = \sum_i y_i^2.
+\end{equation}
+Its derivative with respect to $y_i$ reads
+\begin{equation}
+   \frac{\d L}{\d y_i} = y_i (y^2 - r^2).
+\end{equation}
+This may be the starting point of backpropagation. The length of this gradient is $y(y^2-r^2)$.
+
+Eventually we may want to add a stochastic component orthogonal to the gradient. If we have a random vector $\xi_i$, and require that it modifies the orthogonal component of a vector $v$, we should have
+\begin{equation}
+  v'_i = v_i\left(1- \frac{v\xi}{v^2}\right) + \xi_i,
+\end{equation}
+since then $v'v=v^2$ and $v'v_\perp = \xi v_\perp$.
+
+
+\subsubsection{Neural learning}
+
+After we have convinced ourselves that neural level learning to reach a smallest possible value is useful strategy, we should provide a mechanism that achieves this goal. Assume that we have inputs $x_k$ and $z=\sum w_kx_k$ (c.f. \eqref{eq:z}). We should compute the derivative of the axon with respect to the weight, but maintaining the constraint that the norm is one.
+
+The direct method is to project the derivative to the orthogonal plane of the constraint. The derivative of the constraint reads
+\begin{equation}
+  \frac{\d C}{\d w_k} = w_k,
+\end{equation}
+the orthogonal projector is
+\begin{equation}
+  \Pi_{k\ell}= \delta_{k\ell}-\frac{w_kw_\ell}K,
+\end{equation}
+where we used that $\sum_kw_k^2=K$. The derivative of the output reads
+\begin{equation}
+  \frac{\d y}{\d w_k} = \sigma'(z) x_k,
+\end{equation}
+so the orthogonal projector is
+\begin{equation}
+  \Pi_{k\ell}\d_\ell y= \sigma'(z)(x_k - \frac1K w_k z),
+\end{equation}
+where we used that $z=\sum_kw_kx_k$. But it is also a possibility that we apply a projector at the end by normalizing the weights.
+
+For learning we may use then
+\begin{equation}
+  \delta w_k = -\alpha \sigma'(z) x_k.
+\end{equation}
+A technical problem is that $\sigma'(z)=0$ for $z<z_{min}$ and for $z>z_{max}$, while it is $1/\Delta z$ in between. So the steepest descent method does not work correctly. The simplest workaround is that we use an absolute value or a quadratic function instead of $\sigma$. In the second case we obtain
+\begin{equation}
+  \delta w_k = -\alpha z x_k.
+\end{equation}
+
+We may want to make the minimization somewhat stochastic. This can be reached in several ways. We may simply multiply the above change by a random number in the form
+\begin{equation}
+  \delta w_k = -\alpha(1+\xi_k) \sgn(z)(x_k - \frac1K w_k z),\qquad \exv{\xi_k}=0,\quad \exv{\xi_k\xi_\ell}=W^2\delta_{k\ell}.
+\end{equation}
+For $W=0$ we get back the earlier result, for large $W$ the update is purely stochastic.
+
+Another possibility is the following. We may define a local energy, and change the weights to minimize it. The point is that it is that the energy can be chosen in any ways provided its minimum coincides the zero gradient result. So we may choose for example
+\begin{equation}
+  E = \frac12 (w\cdot x)^2 + \lambda (w^2-K)^2.
+\end{equation}
+The first term tries to minimize $z=w\cdot x$ while the second term forces $w^2=w\cdot w=K$. If $\lambda\gg1$ then the $w^2=K$ constraint is very stiff, practically constraining the minimization to the surface of the $K$-dimensional sphere with radius $\sqrt{K}$.
+
+The energy approach has advantages as opposed to the deterministic equations. First of all we can easily include other requirements. For example, we can choose
+\begin{equation}
+  E = \frac12 (w\cdot x)^2 + \lambda (w^2-K)^2 + \eta\left[\sum_k x_k (w_k^2-1)\right]^2.
+\end{equation}
+The second term does not give constraints for the weights, where the input is zero. For example, if only the first $L$ inputs are 1, the rest is 0, then the above energy turns into
+\begin{equation}
+  E_L = \frac12 (w\cdot x)^2 + \lambda (w^2-K)^2 + \eta\left[\sum_{k=1}^L w_k^2-L\right]^2.
+\end{equation}
+A possible scenario is that we choose a small $\lambda$ and a large $\eta$. This strognly requires that the weights with large input are not zero (they are near a $L$-dimensional sphere), while weakly require that the weights with zero input are also not zero.
+
+Another possible choice that performs this task is
+\begin{equation}
+  E = \frac12 (w\cdot x)^2 + \eta\left[\sum_k (x_k+\ep) (w_k^2-1)\right]^2.
+\end{equation}
+
+If we want to use steepest descent method to minimize this energy we should go into the direction of the (negative) gradient of the energy. Allowing some stochasticity we may write
+\begin{equation}
+  \delta w_k = -\alpha \left(\xi_k+ x_k (w\cdot x) + 4 \eta w_k(x_k+\ep) \left[\sum_k (x_k+\ep) (w_k^2-1)\right]\right),
+\end{equation}
+where $\alpha$ is the learning rate, $\exv{\xi_k}=0$ and $\exv{\xi_k\xi_\ell}=W^2\delta_{k\ell}$ is a noise term.
+
+Alternatively, we may use Monte Carlo technique for update. Single out one weight $w_k$, where the corresponding energy is $E$. We choose a new weight $w_k'$, then the corresponding energy we denote by $E'$. We accept the new weights with probability
+\begin{equation}
+  P_{acc} = \min\left(1, e^{-\beta(E'-E)}\right).
+\end{equation}
+If $\beta=0$, then we always accept the new weight (infinite temperature), if $\beta=\infty$, then we accept it only if $E'<E$ (zero temperature). With this method we can ensure that the distribution of the weights is
+\begin{equation}
+  P(w) \sim e^{-\beta E}.
+\end{equation}
+
+
+\subsection{Examples of activation functions}
+
+  
+  \begin{eqnarray}
+    && \sigma = \frac12\left(\frac {\beta x}{\sqrt{\beta^2x^2+1}}+1\right);\qquad \sigma' = \frac \beta{2\sqrt{1+\beta^2x^2}} = 4\beta(\sigma(1-\sigma))^{3/2}\nn
+    && \sigma = \frac12\left(1+\tanh \beta x\right) = \frac1{1+e^{-2\beta x}}; \qquad \sigma' = \frac{2\beta e^{2\beta x}}{(1+e^{2\beta x})^2} = 2\beta\sigma(1-\sigma)\nn
+    && \sigma = \left\{
+       \begin{array}[c]{rl}
+         0,\quad & \mathrm{if}\; x<-\frac\pi{2\beta}\cr
+         (1+\sin \beta x)/2,\quad & \mathrm{if}\; -\frac\pi{2\beta}<x<\frac\pi{2\beta}\cr
+         1,\quad & \mathrm{if}\; x>\frac\pi{2\beta}.\cr
+       \end{array} \right\};\qquad
+          \sigma' = \left\{
+       \begin{array}[c]{rl}
+         0,\quad & \mathrm{if}\; x<-\frac\pi{2\beta}\cr
+         \beta /2\cos \beta x,\quad & \mathrm{if}\; -\frac\pi{2\beta}<x<\frac\pi{2\beta}\cr
+         0,\quad & \mathrm{if}\; x>\frac\pi{2\beta}.\cr
+       \end{array}
+       \right\} = \beta\sqrt{\sigma(1-\sigma)},\nn
+    && \sigma = \left\{
+       \begin{array}[c]{rl}
+         0,\quad & \mathrm{if}\; x<-\frac1\beta\cr
+         (1+\beta x)/2,\quad & \mathrm{if}\; -\frac1\beta<x<\frac1\beta\cr
+         1,\quad & \mathrm{if}\; x>\frac1\beta.\cr
+       \end{array} \right\};\qquad
+          \sigma' = \left\{
+       \begin{array}[c]{rl}
+         0,\quad & \mathrm{if}\; x<-\frac1\beta\cr
+         \beta /2,\quad & \mathrm{if}\; -\frac1\beta<x<\frac1\beta\cr
+         0,\quad & \mathrm{if}\; x>\frac1\beta.\cr
+       \end{array}
+       \right\} = \frac\beta2\Theta[\sigma(1-\sigma)],\nn
+  \end{eqnarray}
+  The derivative of all of these functions is $\beta/2$ at the origin. The plot of these functions is shown in Fig.~\ref{fig:actfunc} for $\beta=1$.
+  \begin{figure}[htbp]
+    \label{fig:actfunc}
+    \centerline{\includegraphics[width=6cm]{actfunc}}
+    \caption{The activation functions for $\beta=1$.}
+  \end{figure}
+  As we see from the derivatives, all of the above activation functions are member of a common family with $\sigma'=\beta/2(4\sigma(1-\sigma))^\alpha$ for different $\alpha$.
 
 
 \end{document}

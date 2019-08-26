@@ -26,8 +26,8 @@ int main(int argc, char const *argv[]) {
   // ----------------------------------------------------------------------- //
 
   auto update = [=](Network *N) {
-    N->applytoLayer(lyres, [=](int n){ lyresupdate(N, n);});
-    N->applytoLayer(lossly, [=](int n){ lossupdate(N, n);});
+    N->forallSitesinLayer(lyres, [=](int n){ lyresupdate(N, n);});
+    N->forallSitesinLayer(lossly, [=](int n){ lossupdate(N, n);});
   };
 
   DNetwork bpntw(&ntw);
@@ -36,15 +36,15 @@ int main(int argc, char const *argv[]) {
   auto backpropagate = [=](DNetwork *BPN) {
     Network *N = BPN->associatedNetwork();
     BPN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
-    N->applytoLayer(lossly, [=](int n){ lossbp(BPN, n);});
-    N->applytoLayer(lyres, [=](int n){ lyresbp(BPN, n);});
+    N->forallSitesinLayer(lossly, [=](int n){ lossbp(BPN, n);});
+    N->forallSitesinLayer(lyres, [=](int n){ lyresbp(BPN, n);});
   };
 
   auto learn = [=](DNetwork *BPN, int lynum, double lrate) {
     Network *N = BPN->associatedNetwork();
-    N->applytoLayer(lynum, [&](int n) {
+    N->forallSitesinLayer(lynum, [&](int n) {
       for (int cnn = 0; cnn < N->nConnections(n); cnn++) {
-        N->siteConnection(n, cnn) -= lrate* BPN->Dconn(n, cnn);
+        N->connection(n, cnn) -= lrate* BPN->Dconn(n, cnn);
       }
     });
   };
@@ -57,7 +57,7 @@ int main(int argc, char const *argv[]) {
 
   //////////////////////////////////////////////////////////////////////
 
-  ntw.applytoLayer(basely, [&](int n){ ntw[n] = normal_dist(0, 1.0)();});
+  ntw.forallSitesinLayer(basely, [&](int n){ ntw[n] = normal_dist(0, 1.0)();});
   for (double& x : expected_output) x = 0.01;
   expected_output[2] = 1.0;
   normalize(&expected_output);
@@ -81,7 +81,7 @@ int main(int argc, char const *argv[]) {
 
   //////////////////////////////////////////////////////////////////////
 
-  ntw.applytoLayer(basely, [&](int n){ ntw[n] = normal_dist(0, 1.0)();});
+  ntw.forallSitesinLayer(basely, [&](int n){ ntw[n] = normal_dist(0, 1.0)();});
   for (double& x : expected_output) x = 0.01;
   expected_output[3] = 1.0;
   normalize(&expected_output);

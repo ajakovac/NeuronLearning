@@ -30,21 +30,21 @@ class Numder {
     partial_update(L, 0);  // update the complete network
     int lossID = L->nSites()-1;
     z[lossID] = 1;
-    double y = L->axon(lossID);
+    double y = L->site(lossID);
     for (int n = lossID-1; n>= 0; --n) {
       int ly = L->sitelayerID(n);
-      double x = L->axon(n);
-      L->axon(n) +=dx;
+      double x = L->site(n);
+      L->site(n) +=dx;
       partial_update(L, ly+1);
-      z[n] = (L->axon(lossID)-y)/dx;
-      L->axon(n)-= dx;
+      z[n] = (L->site(lossID)-y)/dx;
+      L->site(n)-= dx;
       partial_update(L, ly+1);
       for (int cid = 0; cid < L->nConnections(n); cid++) {
-        x = L->siteConnection(n, cid);
-        L->siteConnection(n, cid) += dx;
+        x = L->connection(n, cid);
+        L->connection(n, cid) += dx;
         partial_update(L, ly);
-        dconn[ L->getconnID(n, cid) ] = (L->axon(lossID)-y)/dx;
-        L->siteConnection(n, cid)-= dx;
+        dconn[ L->getconnID(n, cid) ] = (L->site(lossID)-y)/dx;
+        L->connection(n, cid)-= dx;
         partial_update(L, ly);
       }
     }

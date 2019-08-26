@@ -12,4 +12,7 @@ configure_file("${CMAKE_SOURCE_DIR}/include/cmake_variables.hpp.in"
 
 add_subdirectory(Tests)
 add_subdirectory(LearnMnist)
+add_subdirectory(NL)
+add_subdirectory(LearnZero)
+add_subdirectory(TrafficSigns)
 

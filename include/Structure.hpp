@@ -9,6 +9,7 @@
 #include<algorithm>
 #include<fstream>
 #include<string>
+#include<iomanip>
 #include "Shape.hpp"
 #include "Rnd.hpp"
 
@@ -19,288 +20,349 @@
 
 class Network {
   // the data members: all are private:
-  // vector of number_of_connections size:
-  std::vector<double> conn;   // all connection values
-  std::vector<int> connsite;  // corresponding connected sites
 
-  // vectors of number_of_axons size:
-  std::vector<double> axons;
-  std::vector<int> layers;  // all axons have a layer number
-  std::vector<int> conn_offset;  // here starts the connections of a given site
+  // the basic units are the sites, their values are stored here
+  std::vector<double> sites;
 
-  // vector of number_of layers size:
-  // the axons belonging to a layer are placed continuously, starting from
-  // an index value: that is stored in layer_offset vector:
-  std::vector<int> layer_offset;
-  // the shapes of the layers is a vector of vectors which is not well suited
-  // for GPU. Therefore all applications that use shape must stay on CPU.
-  // Nevertheless geometry is a very important aspect of layers.
-  std::vector<Shape>  shapes;
+  // sites are organized in layers; layers have shape
+  std::vector<Shape> shapes;  // vector of number_of_layers size
+
+  // site values are stored continuousy, so we must remember,
+  // where the sites of a given layer start (last element is sites.size())
+  std::vector<uint> layer_offset;  // vector of number_of_layers+1 size:
+
+  // sites are connected:
+  std::vector<double> conn;   // connection values
+  std::vector<uint> connsite;  // corresponding connected sites
+
+  // connections are also stored continuously, so we must remember,
+  // where the connections of a given site starts
+  // the last element is always equal to conn.size()
+  std::vector<uint> conn_offset;  // vector of number_of_sites+1 size
 
  public:
-  //////////////////////////////////////////////////////////////
-  // we have access to the data structures above //
-  //////////////////////////////////////////////////////////////
-
-  // the offset of a layer
-  int layerOffset(int lyn) {return layer_offset[lyn];}
-  // the connection offset
-  int fn_connoffset( int sn) {return conn_offset[sn];}
+  // constructor: only offsets need to be adjusted
+  Network() {
+    layer_offset.push_back(0);
+    conn_offset.push_back(0);
+  }
 
   //////////////////////////////////////////////////////////////
-  // functions for extracting data //
+  // functions for reaching data one by one //
   //////////////////////////////////////////////////////////////
 
-  // Network acts like a vector of axons
-  double& operator[](int sn) { return axons[sn];}
-  // get the axon value from site ID sn
-  double& axon(int sn) {return axons[sn];}
-  // get the axon value from layer ID and relative index
-  double axon(int sn) const {return axons[sn];}
-  // get the axon value from layer ID and relative index
-  double& axon(int lyn, int lyindex) {
-    return axons[layer_offset[lyn] + lyindex];}
-  double axon(int lyn, int lyindex) const {
-    return axons[layer_offset[lyn] + lyindex];}
+  // Network acts like a vector of sites
+  double& operator[](uint sn) { return sites[sn];}
+  // get the site value from site ID sn
+  double& site(uint sn) {return sites[sn];}
+  // get the site value from site ID sn, const version
+  double site(uint sn) const {return sites[sn];}
+  // get the site value from layer ID and relative index
+  double& site(uint lyn, uint lyindex) {
+    return sites[layer_offset[lyn] + lyindex];}
+  // get the site value from layer ID and relative index, const version
+  double site(uint lyn, uint lyindex) const {
+    return sites[layer_offset[lyn] + lyindex];}
   // site ID from layer number and relative index
-  std::size_t getsiteID(int lyn, int sli) { return layer_offset[lyn] + sli; }
-  // number of all sites
-  std::size_t nSites() {return axons.size();}
-  // number of layers
-  std::size_t nLayers() const {return layer_offset.size();}
-  // number of sites in a layer lyn
-  std::size_t nSitesinLayer(int lyn) const {
-    if (lyn== static_cast<int>(layer_offset.size())-1)
-      return axons.size()-layer_offset[lyn];
-    return layer_offset[lyn+1]-layer_offset[lyn];
-  }
-  // gives layer ID to that site sn belongs to
-  int sitelayerID(int sn) const { return layers[sn]; }
-  // index of the site within its layer
-  int sitelayerIndex(int sn) const {
-    return sn-layer_offset[ layers[sn]]; }
-
-  //////////////////////////////////////////////////////////////
-  // functions for handle connections //
-  //////////////////////////////////////////////////////////////
-
-  // number of all connections
-  std::size_t nallConnections() {return conn.size();}
-  // number of connections of site sn
-  std::size_t nConnections(int sn) {  // number of connections for a site
-    if (sn== static_cast<int>(axons.size())-1)
-      return conn.size()-conn_offset[sn];
-    return conn_offset[sn+1]-conn_offset[sn];
-  }
-  // connection ID of the cn-th connection of site sn
-  int getconnID(int sn, int cn) { return conn_offset[sn]+cn; }
-  // get the site the connection belongs to
-  int getconnSite(int cid) {
-    for (int nn = 1; nn < static_cast<int>(axons.size()); ++nn)
-      if (conn_offset[nn] < cid) return(nn-1);
-    return(axons.size()-1);
-  }
-  // the connection value from conn ID
-  double& siteConnection(int connID) {return conn[connID];}
-  // value of the cn-th connection of site sn
-  double& siteConnection(int sn, int cn) {
-    return conn[ conn_offset[sn]+cn ]; }
-  // the connected site of the cn-th connection of site sn
-  int& siteConnectedSite(int sn, int cn) {
-      return connsite[ conn_offset[sn]+cn ]; }
-  // axon of the connected site of the cn-th connection of site sn
-  double& siteConnectedValue(int sn, int cn) {
-    return axons[ connsite[ conn_offset[sn]+cn ] ]; }
-
-  //////////////////////////////////////////////////////////////
-  // functions for handle connections //
-  //////////////////////////////////////////////////////////////
-
-  // shape of a layer lyn
-  Shape& layerShape(int lyn) { return shapes[lyn]; }
-  // shape of a layer of site sn
-  Shape& siteShape(int sn) { return shapes[layers[sn]]; }
-  // position of the site sn within its layer
-  std::vector<int> sitePos(int sn) {
-    int lind = layers[sn];
-    return shapes[lind].components(sn - layer_offset[lind]);
-  }
+  uint getsiteID(uint lyn, uint sli) { return layer_offset[lyn] + sli; }
   // site ID of a site in layer lyn at position pos
-  int getsiteID(int lyn, Position pos) {
+  uint getsiteID(uint lyn, Position pos) {
     Shape& sh = shapes[lyn];
     return layer_offset[lyn] + sh.index(pos);
   }
+  // connection ID of the cn-th connection of site sn
+  uint getconnID(uint sn, uint cn) { return conn_offset[sn]+cn; }
+  // the connection value from conn ID
+  double& connection(uint connID) {return conn[connID];}
+  // value of the cn-th connection of site sn
+  double& connection(uint sn, uint cn) {
+    return conn[ conn_offset[sn]+cn ]; }
+  // the connected site of the cn-th connection of site sn
+  uint& connectedSite(uint sn, uint cn) {
+      return connsite[ conn_offset[sn]+cn ]; }
+  // site of the connected site of the cn-th connection of site sn
+  double& connectedValue(uint sn, uint cn) {
+    return sites[ connsite[ conn_offset[sn]+cn ] ]; }
+  // shape of a layer lyn
+  Shape& layerShape(uint lyn) { return shapes[lyn]; }
   // change the layer shape
-  void setlayerShape(int lyn, Shape s) {
+  void setlayerShape(uint lyn, Shape s) {
     if (s.vol()!= nSitesinLayer(lyn))
       throw(Error("Incompatible shapes in setlayerShape\n"));
     shapes[lyn] = s;
+  }
+
+
+  //////////////////////////////////////////////////////////////
+  // functions for having size information //
+  //////////////////////////////////////////////////////////////
+
+  // number of all sites
+  uint nSites() {return sites.size();}
+  // number of layers
+  uint nLayers() const {return shapes.size();}
+  // number of sites in a layer lyn
+  uint nSitesinLayer(uint lyn) const {
+    return layer_offset[lyn+1]-layer_offset[lyn];
+  }
+  // number of all connections
+  uint nallConnections() {return conn.size();}
+  // number of connections of site sn
+  uint nConnections(int sn) {  // number of connections for a site
+    return conn_offset[sn+1]-conn_offset[sn];
   }
 
   //////////////////////////////////////////////////////////////
   // data access through lambda expressions //
   //////////////////////////////////////////////////////////////
 
-  // provides a lambda accessing the connection
-  auto readConnection(int sn) {
-    double *conndat = &conn[ conn_offset[sn]];
-    return [=](int cn) {
-      return *(conndat+cn);
+  // access to layer ly
+  auto readLayer(uint ly) {
+    double* data = &sites[layer_offset[ly]];
+    return [=](uint snr) -> double& {
+      return *(data+snr);
+    };
+  }
+  // access to connections of sn
+  auto readConnection(uint sn) {
+    double* data = &conn[conn_offset[sn]];
+    return [=](uint cnr) -> double& {
+      return *(data +cnr);
+    };
+  }
+  // access to connected sites to site sn
+  auto readConnectedSite(uint sn) {
+    uint* data = &connsite[conn_offset[sn]];
+    return [=](uint cnr) -> uint {
+      return *(data +cnr);
+    };
+  }
+  // provides a lambda accessing the connected value
+  auto readConnectedValue(uint sn) {
+    uint* connst = &connsite[conn_offset[sn]];
+    return [=](uint cn) {
+      return sites[*(connst+cn)];
     };
   }
 
-  // provides a lambda accessing the connected value
-  auto readConnectedSite(int sn) {
-    int *connst = &connsite[ conn_offset[sn]];
-    return [=](int cn) {
-      return *(connst+cn);
-    };
-  }
+  /////////////////////////
+  // search in hierarchy //
+  /////////////////////////
 
-  // provides a lambda accessing the connected value
-  auto readConnectedValue(int sn) {
-    int *connst = &connsite[ conn_offset[sn]];
-    return [=](int cn) {
-      return axons[*(connst+cn)];
-    };
+  // get the site the connection belongs to; does not check range
+  uint getconnSite(uint cid) {
+    for (uint nn = 1; nn < conn_offset.size(); ++nn)
+      if (conn_offset[nn] > cid) return(nn-1);
+    return(sites.size());
+  }
+  // get the layer ID to that site sn belongs to; no range check
+  uint sitelayerID(uint sn) const {
+    for (uint nn = 1; nn < layer_offset.size(); ++nn)
+      if (layer_offset[nn] > sn) return(nn-1);
+    return(shapes.size());
+  }
+  // index of the site within its layer
+  uint sitelayerIndex(uint lyn, uint sn) const {
+    return sn-layer_offset[lyn]; }
+
+  // position of the relative site sn within its layer
+  std::vector<int> sitePos(uint lind, uint sn) {
+    return shapes[lind].components(sn);
+  }
+  // position of the site sn
+  std::vector<int> sitePos(uint sn) {
+    uint lind = sitelayerID(sn);
+    return shapes[lind].components(sn - layer_offset[lind]);
   }
 
   //////////////////////////////////////////////////////////////
   // functions to build up a network //
   //////////////////////////////////////////////////////////////
 
-  // apply a function to all axons of a layer:
+  // apply a function to all sites of a layer:
   // F : int -> void, int means site ID.
   template < typename T >
-  void applytoLayer(int lyn, T F) {
-    int nmax;
-    if (lyn == static_cast<int>(layer_offset.size())-1) nmax = axons.size();
-    else
-      nmax = layer_offset[lyn+1];
-    for (int n = layer_offset[lyn]; n < nmax; n++) F(n);
+  void forallSitesinLayer(uint lyn, T F) {
+    uint nmax = layer_offset[lyn+1];
+    for (uint n = layer_offset[lyn]; n < nmax; n++) F(n);
   }
 
   // apply a function to all connections in a layer
   template< typename T>
-  void forallConnectionsinLayer(int lyn, T F) {
-    int nmax;
-    if (lyn == static_cast<int>(layer_offset.size()-1)) nmax = axons.size();
-    else
-      nmax = layer_offset[lyn+1];
-    for (int n = layer_offset[lyn]; n < nmax; n++) {
-      int cnmax = nConnections(n);
-      for (int cn = 0; cn < cnmax; ++cn) F(n, cn);
+  void forallConnectionsinLayer(uint lyn, T F) {
+    uint nmax = layer_offset[lyn+1];
+    for (uint n = layer_offset[lyn]; n < nmax; n++) {
+      uint cnmax = nConnections(n);
+      for (uint cn = 0; cn < cnmax; ++cn) F(n, cn);
     }
   }
 
   // create a layer by specifying its shape
   // IMPORTANT! Layer creation order means layer hierarchy as well!!
-  int AddLayer(const Shape s) {
-    int lysize = s.vol();
-    int axind = axons.size();  // the actual position in axons
-    layer_offset.push_back(axind);  // is the current layer offset
-    int lind = 0;
-    if (axind > 0) lind=layers[axind-1]+1;  // get the next layer number
-    for (int n = 0; n < lysize; n++) {
-      axons.push_back(0.0);  // default axon value is zero
-      layers.push_back(lind);  // all of these axons have the same layer number
-      conn_offset.push_back(0);  // no connections for this site
+  uint AddLayer(const Shape s) {
+    uint lysize = s.vol();
+    // the last connection; also the last element of conn_offset
+    uint lastconn = conn.size();
+    conn_offset.pop_back();  // delete last element of conn_offset
+    for (uint n = 0; n < lysize; n++) {
+      sites.push_back(0.0);  // default site value is zero
+      conn_offset.push_back(lastconn);  // no new connections for this site
     }
+    conn_offset.push_back(lastconn);  // closing element
+    layer_offset.push_back(sites.size());  // end of current layer
     shapes.push_back(s);
-    return lind;
+    return shapes.size()-1;
   }
 
+  // Connection managers: we always add connections for the last layer.
+  // We define several methods to do that.
 
-  // Connection manager: connection of the last layer can be easily added,
-  // the structure supports this type of connection building.
-  // We create connections with the help of an fn and a cf function
-  // fn(Network *, int, vector<int> *): gives site list to where we connect
-  // cf(Network*, int, int) -> double: provides the strength of the connection
+  // The basic tool to create connections uses an fn and a cf function
+  // fn(Network *, int ly, int rsn, vector<int> *): gives site list to connect
+  // cf() -> double: provides the strength of the connection
   template < typename FNT, typename CFT >
   void ConnectLastLayer(FNT fn, CFT cf) {
     std::vector<int> vs;  // placeholder for the connection site list
-    int ls = axons.size()-1;
-    int lyn = layers[ls];  // the last layer ID
-    for (unsigned int sn = layer_offset[lyn]; sn < axons.size(); sn++) {
-      conn_offset[sn] = conn.size();  // the next connection offset
+    uint lyn = shapes.size()-1;  // the last layer ID
+    uint nst = layer_offset[lyn+1]-layer_offset[lyn];  // number of sites
+    for (uint snr = 0; snr < nst; ++snr) {  // relative site indexing
+      uint sntot = layer_offset[lyn]+snr;  // this is the absolute site id
+      conn_offset[sntot] = conn.size();  // the next connection offset
       vs.clear();
-      fn(this, sn, &vs);  // get the corresponding connection sites
+      fn(this, lyn, snr, &vs);  // get the corresponding connection sites
       for (const auto& csn : vs) {
-        connsite.push_back(csn);
-        double cn = cf(this, sn, csn);  // compute the corresponding weights
-        conn.push_back(cn);
+        connsite.push_back(csn);  // connect to this site
+        conn.push_back(cf());  // set the weight using the cf function
       }
+    }
+    conn_offset[sites.size()] = conn.size();  // the last element
+  }
+
+  // a shorthand notation for constant strength connections
+  template < typename FNT >
+  void ConnectLastLayer(FNT fn, double cnst) {
+    ConnectLastLayer(fn, [=](){return cnst;});
+  }
+
+  // The advanced tool to create connections uses three functions
+  // fn(Network *, int ly, int snr, vector<int> *): gives site list to connect
+  // rf(Network *, int sn0, int sn1) -> bool: should it be connected?
+  // cf() -> double: provides the strength of the connection
+  template < typename FNT, typename RFT, typename CFT >
+  void ConnectLastLayer_advanced(FNT fn, RFT rf, CFT cf) {
+    std::vector<int> vs;  // placeholder for the connection site list
+    uint lyn = shapes.size()-1;  // the last layer ID
+    uint nst = layer_offset[lyn+1]-layer_offset[lyn];  // number of sites
+    for (uint snr = 0; snr < nst; ++snr) {  // relative site indexing
+      uint sntot = layer_offset[lyn]+snr;  // this is the absolute site id
+      conn_offset[sntot] = conn.size();  // the next connection offset
+      vs.clear();
+      fn(this, lyn, snr, &vs);  // get the corresponding connection sites
+      for (const auto& csn : vs) {
+        if (rf(this, sntot, csn)) {  // connect if rf is true
+          connsite.push_back(csn);  // connect to this site
+          conn.push_back(cf());  // set the weight using the cf function
+        }
+      }
+    }
+    conn_offset[sites.size()] = conn.size();  // the last element
+  }
+
+  // for convolution: average spatial weights in a layer
+  // we assume here that the last dimension is the channel
+  void average_weights(int lyn) {
+    int n0 = getsiteID(lyn, 0);  // take the first site in layer
+    int ncinsite = nConnections(n0);  // find its number of connections
+    Shape shp = shapes[lyn];
+    int nofch = shp.back();  // last dimension: number of channels
+    std::vector<double> avrw(ncinsite*nofch);  // for averaging the weights
+    int nsinl = shp.vol();  // number of sites in layer
+    for (uint rsn = 0; rsn < nsinl; ++rsn) {
+      std::vector<int> p = shp.components(rsn);
+      int chn = p.back();
+      int sn = getsiteID(lyn, rsn);
+      for (uint cn = 0; cn < ncinsite; ++cn)
+        avrw[chn*ncinsite+cn] += connection(sn, cn);  // add up connections
+    }
+    int nspatialsites = nsinl/nofch;  // number of sites per channel
+    for (auto &sw : avrw) sw /= nspatialsites;  // normalize
+    for (uint rsn = 0; rsn < nsinl; ++rsn) {
+      std::vector<int> p = shp.components(rsn);
+      int chn = p.back();
+      int sn = getsiteID(lyn, rsn);
+      for (uint cn = 0; cn < ncinsite; ++cn)
+        connection(sn, cn) = avrw[chn*ncinsite+cn];  // rewrite connections
     }
   }
 
-
   // save the network
-  void save_verbatim(const char* filename) {
+  void save(const char* filename, bool verbatim = false) {
     std::ofstream file;
     file.open(filename);
-    file << "#Saving network\n";
+    file << "#Saving network\n\n";
 
-    file << "\n#laynum\toffset\tshape\n";
-    for (unsigned int lyn = 0; lyn < layer_offset.size(); ++lyn)
-      file << lyn << "\t" << layer_offset[lyn]<< "\t"
-           << shapes[lyn] << std::endl;
+    file << std::fixed << std::setprecision(6);
 
+    file << "#number of layers:\n";
+    file << shapes.size() << std::endl;
+    file << "#l#    l_offset       shape\n";
+    for (uint lyn = 0; lyn < shapes.size(); ++lyn)
+      file << std::right
+           << std::setw(3) << lyn
+           << std::setw(9) << layer_offset[lyn]
+           << std::setw(10) << shapes[lyn]
+           << std::endl;
 
-    file << "\n#num\taxons\toffset\tlayer\tposition\tconn_offset\n";
-    for (unsigned int sn = 0; sn < axons.size(); ++sn) {
-      file << sn << "\t" << axons[sn] <<"\t";
-      file << layers[sn] << "\t";
-      file << sitePos(sn) << "\t\t" << conn_offset[sn];
-      file  << std::endl;
-    }
-
-    file << "\n#nconn\tconnto\tpos\tfrom\tpos\tconnstrength\n";
-    for (int sn = 0; sn < static_cast<int>(axons.size()); sn++) {
-      int cnmax = conn.size();
-      if (sn < static_cast<int>(axons.size())-1) cnmax = conn_offset[sn+1];
-      for (int cn = conn_offset[sn]; cn < cnmax; cn++) {
-        file << cn << "\t" << sn << "\t" << sitePos(sn) <<"\t";
-        file << connsite[cn] << "\t" << sitePos(connsite[cn]);
-        file << "\t" << conn[cn];
-        file << std::endl;
+    file << "\n#number of sites:\n";
+    file << sites.size();
+    file << "\n#s#          value   conn_offset";
+    if (verbatim) file << "   position";
+    file  << std::endl;
+    for (uint lyn = 0; lyn < shapes.size(); ++lyn) {
+      uint nst = nSitesinLayer(lyn);
+      for (uint nl = 0; nl < nst; ++nl) {
+        uint sn = getsiteID(lyn, nl);
+        file << std::setw(3) << sn
+             << std::setw(15) << sites[sn]
+             << std::setw(10) << conn_offset[sn];
+        if (verbatim)
+          file << std::setw(10) << sitePos(lyn, nl);
+        file  << std::endl;
       }
     }
-    file.close();
-  }
 
-  // save the network
-  void save(const char* filename) {
-    std::ofstream file;
-    file.open(filename);
-    file << "#Saving network\n";
-
-    file << "\n#layer_offset shape\n";
-    file << layer_offset.size() << std::endl;
-    for (unsigned int lyn = 0; lyn < layer_offset.size(); lyn++)
-      file << layer_offset[lyn] << " " << shapes[lyn] << std::endl;
-
-
-    file << "\n#axons layer conn_offset\n";
-    file << layers.size() << std::endl;
-    for (unsigned int sn = 0; sn < axons.size(); sn++) {
-      file << axons[sn] << " ";
-      file << layers[sn] << " ";
-      file << conn_offset[sn];
-      file  << std::endl;
-    }
-
-    file << "\n#connectedsite connstrength\n";
+    file << "\n#number of connections:\n";
     file << conn.size() << std::endl;
-    for (unsigned int cn = 0; cn < conn.size(); ++cn) {
-      file << connsite[cn]  << " ";
-      file << conn[cn];
-      file << std::endl;
+    file << "#c#  connsite     conn";
+    if (verbatim) file << "       layer:pos --> layer:pos";
+    file  << std::endl;
+    for (uint lyn = 0; lyn < shapes.size(); ++lyn) {
+      uint nst = nSitesinLayer(lyn);
+      for (uint nl = 0; nl < nst; ++nl) {
+        uint sn = getsiteID(lyn, nl);
+        uint cnmin = conn_offset[sn];
+        uint cnmax = conn_offset[sn+1];
+        for (uint cn = cnmin; cn < cnmax; ++cn) {
+          uint ncs = connsite[cn];
+          file << std::setw(3) << cn
+               << std::setw(6) << ncs
+               << std::setw(15) << conn[cn];
+          if (verbatim) {
+            int ncsl = sitelayerID(ncs);
+            int ncsr = ncs - layer_offset[ncsl];
+            file << std::setw(10) << lyn << ":" << sitePos(lyn, nl)
+                 << " --> "
+                 << std::setw(8) << ncsl << ":" << sitePos(ncsl, ncsr);
+          }
+          file << std::endl;
+        }
+      }
     }
     file.close();
   }
 
   // load the network from scratch
-  void load(const char* filename) {
+  void load(const char* filename, bool create = false) {
     std::ifstream file;
     std::string line;
     file.open(filename);
@@ -309,23 +371,36 @@ class Network {
     while ((c =file.peek()) == '#' || c == '\n') {
       std::getline(file, line);
     }
-    int lynum;
+    int lynum;  // read number of layers
     file >> lynum;
+    if (!create && lynum != shapes.size())
+      throw(Error("bad network data file!"));
 
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
     for (int ly = 0; ly < lynum; ++ly) {
-      int intread;
-      file >> intread;
-      layer_offset.push_back(intread);
+      int lnum;
+      file >> lnum;  // read line number
+      int lyoffs;
+      file >> lyoffs;  // read layer offset
+      if (create) {
+        layer_offset[lnum] = lyoffs;
+        layer_offset.push_back(lyoffs);
+      }
       std::vector<int> shaperead;
       char chr;
       file >> chr;
       while (chr != ')') {
+        int intread;
         file >> intread;
         shaperead.push_back(intread);
         file >> std::ws;
         file >> chr;
       }
-      shapes.push_back(Shape(shaperead));
+      if (create) shapes.push_back(Shape(shaperead));
+      // if not create, we assume that the shapes are already given
     }
 
     // skip remark and empty lines
@@ -334,16 +409,32 @@ class Network {
     }
     int axnum;
     file >> axnum;
+    if (create) layer_offset[shapes.size()]= axnum;
+    if (!create && axnum != sites.size())
+      throw(Error("bad network data file!"));
 
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
     for (int an = 0; an < axnum; ++an) {
+      int lnum;
+      file >> lnum;  // read line number
       double xread;
       int intread;
-      file >> xread;
-      axons.push_back(xread);
-      file >> intread;
-      layers.push_back(intread);
-      file >> intread;
-      conn_offset.push_back(intread);
+      file >> xread;  // read site value
+      if (create) sites.push_back(xread);
+      else
+        sites[an] = xread;
+      file >> intread;  // read conn offset
+      if (create) {
+        conn_offset[lnum] = intread;
+        conn_offset.push_back(intread);
+      } else {
+        conn_offset[an] = intread;
+      }
+      // read the remainder of the line
+      if (file.peek() != '\n') std::getline(file, line);
     }
 
     // skip remark and empty lines
@@ -352,86 +443,38 @@ class Network {
     }
     int connum;
     file >> connum;
+    if (create) conn_offset[sites.size()] = connum;
+    if (!create && connum != conn.size())
+      throw(Error("bad network data file!"));
+
+    // skip remark and empty lines
+    while ((c =file.peek()) == '#' || c == '\n') {
+      std::getline(file, line);
+    }
     for (int cn = 0; cn < connum; ++cn) {
+      int lnum;
+      file >> lnum;  // read line number
       double xread;
       int intread;
-      file >> intread;
-      connsite.push_back(intread);
-      file >> xread;
-      conn.push_back(xread);
+      file >> intread;  // read connected site
+      if (create) connsite.push_back(intread);
+      else
+        connsite[cn] = intread;
+      file >> xread;  // read connection strength
+      if (create) conn.push_back(xread);
+      else
+        conn[cn] = xread;
+      // read the remainder of the line
+      if (file.peek() != '\n') std::getline(file, line);
     }
 
-    file.close();
-  }
-
-
-  // fill the axon and connection values assuming the same structure
-  void fill(const char* filename) {
-    std::ifstream file;
-    std::string line;
-    file.open(filename);
-    int c;
-    // skip remark and empty lines
-    while ((c =file.peek()) == '#' || c == '\n') {
-      std::getline(file, line);
-    }
-    unsigned int lynum;
-    file >> lynum;
-    if (lynum != layer_offset.size())
-      throw(Error("Bad network data file!"));
-
-    for (unsigned int ly = 0; ly < lynum; ++ly) {
-      int intread;
-      file >> intread;
-      // layer_offset.push_back(intread);
-      std::vector<int> shaperead;
-      char chr;
-      file >> chr;
-      while (chr != ')') {
-        file >> intread;
-        shaperead.push_back(intread);
-        file >> std::ws;
-        file >> chr;
-      }
-      // shapes.push_back(Shape(shaperead));
-    }
-
-    // skip remark and empty lines
-    while ((c =file.peek()) == '#' || c == '\n') {
-      std::getline(file, line);
-    }
-    unsigned int axnum;
-    file >> axnum;
-    if (axnum != axons.size())
-      throw(Error("Bad network data file!"));
-
-    for (unsigned int an = 0; an < axnum; ++an) {
-      double xread;
-      int intread;
-      file >> xread;
-      axons[an] = xread;
-      file >> intread;
-      // layers.push_back(intread);
-      file >> intread;
-      // conn_offset.push_back(intread);
-    }
-
-    // skip remark and empty lines
-    while ((c =file.peek()) == '#' || c == '\n') {
-      std::getline(file, line);
-    }
-    unsigned int connum;
-    file >> connum;
-    if (connum != conn.size())
-      throw(Error("Bad network data file!"));
-
-    for (unsigned int cn = 0; cn < connum; ++cn) {
-      double xread;
-      int intread;
-      file >> intread;
-      // connsite.push_back(intread);
-      file >> xread;
-      conn[cn] = xread;
+    // finally the last elements of offsets are set
+    if (create) {
+      layer_offset.push_back(sites.size());
+      conn_offset.push_back(conn.size());
+    } else {
+      layer_offset[shapes.size()] = sites.size();
+      conn_offset[sites.size()] = conn.size();
     }
 
     file.close();
@@ -442,16 +485,21 @@ class Network {
 // Here we propose some functions for connections:
 
 // site list functions: this lists all the sites of a layer
-auto alllayer = [](int lyn) {
-  return [=](Network* N, int, std::vector<int> *vs){
-    N->applytoLayer(lyn, [&](int n){ vs->push_back(n); });
+auto alllayer = [](uint lyn) {
+  return [=](Network* N, uint, uint, std::vector<int> *vs){
+    N->forallSitesinLayer(lyn, [&](uint n){ vs->push_back(n); });
   };
 };
 
 // masqued local neighbourhood with shift
-auto masquedlist = [](int lyn, const Shape &masque, const Shape &shift) {
-  return [=](Network* N, int an, std::vector<int> *v) {
-    auto p1 = cdot(N->sitePos(an), shift);
+auto masquedlist = [](uint lyn,  // this is the layer from where we choose sites
+                      const Shape &masque,  // the window of collection
+                      const Shape &shift,  // the shift of neighboring windows
+                      const Shape &offset  // the starting offset
+                      ) {
+  // lf is the layer from we connect, anr the relative site index
+  return [=](Network* N, uint lf, uint anr, std::vector<int> *v) {
+    auto p1 = cdot(N->sitePos(lf, anr), shift) + offset;
     multi_for(masque, [&](auto x){
       Position y = p1+x;
       if ((y>= 0) && (y < N->layerShape(lyn)) )
@@ -462,27 +510,15 @@ auto masquedlist = [](int lyn, const Shape &masque, const Shape &shift) {
 
 // the most simple connection: only the same position is connected
 auto directlist = [](int lyn){
-  return [=](Network* N, int an, std::vector<int> *v) {
-    v->push_back(N->getsiteID(lyn, N->sitelayerIndex(an)));
+  return [=](Network* N, uint lf, uint anr, std::vector<int> *v) {
+    v->push_back(N->getsiteID(lyn, anr));
   };
 };
 
 ///////////////////////////////////////////////////////////////////////////
 // some examples for the connection functions
-
-auto normal_cf = [](double mean, double var) {
-  auto rr = normal_dist(mean, var);
-  return [=](Network*, int, int) { return rr();};
-};
-
-auto uniform_cf = [](double mean, double var) {
-  auto rr = uniform_dist(mean, var);
-  return [=](Network*, int, int) { return rr();};
-};
-
-auto const_cf = [](double xcnst) {
-  return [=](Network*, int, int) { return xcnst;};
-};
-
+// normal_dist(mean, var);
+// uniform_dist(mean, var);
+// [](){return 1.0;};  for a constant value
 
 #endif  // INCLUDE_STRUCTURE_HPP_

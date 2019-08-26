@@ -28,9 +28,9 @@ try {
   Image_to_Layer(&ntw, basely, &img);
 
   int resly = ntw.AddLayer({szx, szy, 3});
-  ntw.ConnectLastLayer([=](Network *N, int an, std::vector<int> *v) {
+  ntw.ConnectLastLayer([=](Network *N, int lyn, int snr, std::vector<int> *v) {
     Position off = {szx/2, szy/2, 0};
-    Position p0 = N->sitePos(an);
+    Position p0 = N->sitePos(lyn, snr);
     Position p = p0 -off;
     double cf = std::cos(pi/6);
     double sf = std::sin(pi/6);
@@ -39,10 +39,10 @@ try {
     prot = prot+off;
     if ( (prot >= 0) && (prot < N->layerShape(1)) )
       v->push_back(N->getsiteID(0, prot));
-  }, const_cf(1.0));
+  }, 1.0);
 
   auto upd = affine_nonlin_update(id_fn);
-  ntw.applytoLayer(resly, [&](int n){ upd(&ntw, n); });
+  ntw.forallSitesinLayer(resly, [&](int n){ upd(&ntw, n); });
 
   sf::Image img1;
   img1.create(size.x, size.y);

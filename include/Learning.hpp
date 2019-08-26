@@ -14,7 +14,7 @@
 inline double scalar_product_conn(int lyn, DNetwork *A, DNetwork* B) {
     double rn2 = 0.0;
     Network *N = A->associatedNetwork();
-    N->applytoLayer(lyn, [&](int sn) {
+    N->forallSitesinLayer(lyn, [&](int sn) {
         int cnmax = N->nConnections(sn);
         for (int cn = 0; cn < cnmax; ++cn)
             rn2 += A->Dconn(sn, cn)*B->Dconn(sn, cn);
@@ -30,10 +30,10 @@ class SteepestDescent {
         N = DN->associatedNetwork();
     }
     void learn(int lyn, double lrate) {
-        N->applytoLayer(lyn, [&](int n) {
+        N->forallSitesinLayer(lyn, [&](int n) {
             int cnnmax = N->nConnections(n);
             for (int cnn = 0; cnn < cnnmax; cnn++) {
-                N->siteConnection(n, cnn) -= lrate* DN->Dconn(n, cnn);
+                N->connection(n, cnn) -= lrate* DN->Dconn(n, cnn);
             }
         });
     }
@@ -61,7 +61,7 @@ class StochGrad {
             x = 1.0/(1.0 + invmaxgrad*sqrt(rn2));
         }
         N->forallConnectionsinLayer(lyn, [&](int sn, int cn) {
-            N->siteConnection(sn, cn) -= lrate*lrfactor*x*DN->Dconn(sn, cn);
+            N->connection(sn, cn) -= lrate*lrfactor*x*DN->Dconn(sn, cn);
         });
     }
     void startlearncycle() {
@@ -99,7 +99,7 @@ class ADAM {
             double x = DN->Dconn(sn, cn);
             G->Dconn(sn, cn) = beta1*G->Dconn(sn, cn) + (1-beta1)*x;
             V->Dconn(sn, cn) = beta2*V->Dconn(sn, cn) + (1-beta2)*x*x;
-            N->siteConnection(sn, cn) -=
+            N->connection(sn, cn) -=
                 lrate*A1*G->Dconn(sn, cn)/(ep+A2*sqrt(V->Dconn(sn, cn)));
         });
     }
@@ -144,7 +144,7 @@ class ConjugateGadient {
             updcnt[lyn] = restorenm;
             beta = 0;  // fall back to P=R;
         }
-        N->applytoLayer(lyn, [&](int sn) {
+        N->forallSitesinLayer(lyn, [&](int sn) {
             int cnmax = N->nConnections(sn);
             for (int cn = 0; cn < cnmax; ++cn)
                 P->Dconn(sn, cn) = DN->Dconn(sn, cn)+beta*P->Dconn(sn, cn);
@@ -153,10 +153,10 @@ class ConjugateGadient {
         // z[lyn] = rn2;
         z[lyn] = scalar_product_conn(lyn, DN, P);
         double alpha = scalar_product_conn(lyn, DN, P)/(ep+sqrt(pnorm2*rn2));
-        N->applytoLayer(lyn, [&](int sn) {
+        N->forallSitesinLayer(lyn, [&](int sn) {
             int cnmax = N->nConnections(sn);
             for (int cn = 0; cn < cnmax; ++cn)
-                N->siteConnection(sn, cn) -=
+                N->connection(sn, cn) -=
                     lrate*alpha*P->Dconn(sn, cn);
         });
     }
@@ -194,7 +194,7 @@ class ConjugateGadient_xtd {
             updcnt[lyn] = updatemax;
             double rnpn1 = scalar_product_conn(lyn, DN, P);
             double beta = rn2/(z[lyn] - rnpn1);
-            N->applytoLayer(lyn, [&](int sn) {
+            N->forallSitesinLayer(lyn, [&](int sn) {
                 int cnmax = N->nConnections(sn);
                 for (int cn = 0; cn < cnmax; ++cn)
                     P->Dconn(sn, cn) = DN->Dconn(sn, cn)+beta*P->Dconn(sn, cn);
@@ -203,10 +203,10 @@ class ConjugateGadient_xtd {
         double pnorm2 = scalar_product_conn(lyn, P, P);
         z[lyn] = scalar_product_conn(lyn, DN, P);
         double alpha = z[lyn]/(ep+sqrt(pnorm2*rn2));
-        N->applytoLayer(lyn, [&](int sn) {
+        N->forallSitesinLayer(lyn, [&](int sn) {
             int cnmax = N->nConnections(sn);
             for (int cn = 0; cn < cnmax; ++cn)
-                N->siteConnection(sn, cn) -=
+                N->connection(sn, cn) -=
                     lrate*alpha*P->Dconn(sn, cn);
         });
     }

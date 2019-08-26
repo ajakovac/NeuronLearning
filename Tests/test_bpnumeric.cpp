@@ -22,33 +22,36 @@ int main(int argc, char const *argv[]) {
   Network ntw;
 
   int basely = ntw.AddLayer({10});
-  ntw.applytoLayer(basely, [&](int n){ ntw[n] = normal_dist(0.0, 1.0)(); });
+  ntw.forallSitesinLayer(basely, [&](int n){
+    ntw[n] = normal_dist(0.0, 1.0)();
+  });
   pr_Dsite.push_back(true);
   pr_Dconn.push_back(false);
 
   int ly1 = ntw.AddLayer({8});
-  ntw.ConnectLastLayer(masquedlist(basely, {3}, {1}), normal_cf(0.0, 1.0));
+  ntw.ConnectLastLayer(masquedlist(basely, {3}, {1}, {0}),
+                       normal_dist(0.0, 1.0));
   auto ly1update = affine_nonlin_update(tanh_fn(1.0, 1.0));
   auto ly1bp = affine_nonlin_bp(dtanh(1.0, 1.0));
   pr_Dsite.push_back(true);
   pr_Dconn.push_back(true);
 
   int lypool = ntw.AddLayer({6});
-  ntw.ConnectLastLayer(masquedlist(ly1, {3}, {1}), const_cf(1.0));
+  ntw.ConnectLastLayer(masquedlist(ly1, {3}, {1}, {0}), 1.0);
   auto lypoolupdate = maxpool_update;
   auto lypoolbp = affine_nonlin_bp(d_id);
   pr_Dsite.push_back(true);
   pr_Dconn.push_back(false);
 
   int ly3 = ntw.AddLayer({12});
-  ntw.ConnectLastLayer(alllayer(lypool), const_cf(0.1));
+  ntw.ConnectLastLayer(alllayer(lypool), 0.1);
   auto ly3update = affine_nonlin_update(ReLU);
   auto ly3bp = affine_nonlin_bp(dReLU);
   pr_Dsite.push_back(true);
   pr_Dconn.push_back(true);
 
   int lydrop = ntw.AddLayer({12});
-  ntw.ConnectLastLayer(directlist(ly3), const_cf(1.0));
+  ntw.ConnectLastLayer(directlist(ly3), 1.0);
   double p = 0.2;
   auto lydropupdate = dropout_update(&p);
   auto lydropbp = affine_nonlin_bp(d_id);
@@ -56,14 +59,14 @@ int main(int argc, char const *argv[]) {
   pr_Dconn.push_back(false);  // connection does not play role
 
   int resly = ntw.AddLayer({8});
-  ntw.ConnectLastLayer(alllayer(lydrop), const_cf(0.1));
+  ntw.ConnectLastLayer(alllayer(lydrop), 0.1);
   auto reslyupdate = affine_nonlin_update(exp_fn(1.0, 0.5));
   auto reslybp = affine_nonlin_bp(dexp(1.0, 0.5));
   pr_Dsite.push_back(true);
   pr_Dconn.push_back(true);
 
   int lossly = ntw.AddLayer({1});
-  ntw.ConnectLastLayer(alllayer(resly), const_cf(1.0));
+  ntw.ConnectLastLayer(alllayer(resly), 1.0);
   std::vector<double> expected_output(8, 1.0);
   auto lossupdate = pnorm_loss(1, &expected_output);
   // auto lossupdate = KL_loss(&expected_output);  // pnorm_loss(1, &expected_output);
@@ -75,12 +78,12 @@ int main(int argc, char const *argv[]) {
   // ----------------------------------------------------------------------- //
   auto update = [=](Network* L) {
     randiv.set_seed(10);  // to be able to reproduce the same runs
-    L->applytoLayer(ly1, [=](int n){   ly1update(L, n); });
-    L->applytoLayer(lypool, [=](int n){   lypoolupdate(L, n); });
-    L->applytoLayer(ly3, [=](int n){   ly3update(L, n); });
-    L->applytoLayer(lydrop, [=](int n){   lydropupdate(L, n); });
-    L->applytoLayer(resly, [=](int n){    reslyupdate(L, n); });
-    L->applytoLayer(lossly, [=](int n){   lossupdate(L, n); });
+    L->forallSitesinLayer(ly1, [=](int n){   ly1update(L, n); });
+    L->forallSitesinLayer(lypool, [=](int n){   lypoolupdate(L, n); });
+    L->forallSitesinLayer(ly3, [=](int n){   ly3update(L, n); });
+    L->forallSitesinLayer(lydrop, [=](int n){   lydropupdate(L, n); });
+    L->forallSitesinLayer(resly, [=](int n){    reslyupdate(L, n); });
+    L->forallSitesinLayer(lossly, [=](int n){   lossupdate(L, n); });
   };
 
   update(&ntw);
@@ -92,12 +95,12 @@ int main(int argc, char const *argv[]) {
   auto backpropagate = [=](DNetwork *BPL) {
     Network *L = BPL->associatedNetwork();
     BPL->Dsite(L->nSites()-1) = 1.0;  // start with unit derivative
-    L->applytoLayer(lossly, [=](int n){ lossbp(BPL, n); });
-    L->applytoLayer(resly, [=](int n){ reslybp(BPL, n); });
-    L->applytoLayer(lydrop, [=](int n){ lydropbp(BPL, n); });
-    L->applytoLayer(ly3, [=](int n){ ly3bp(BPL, n); });
-    L->applytoLayer(lypool, [=](int n){ lypoolbp(BPL, n); });
-    L->applytoLayer(ly1, [=](int n){ ly1bp(BPL, n); });
+    L->forallSitesinLayer(lossly, [=](int n){ lossbp(BPL, n); });
+    L->forallSitesinLayer(resly, [=](int n){ reslybp(BPL, n); });
+    L->forallSitesinLayer(lydrop, [=](int n){ lydropbp(BPL, n); });
+    L->forallSitesinLayer(ly3, [=](int n){ ly3bp(BPL, n); });
+    L->forallSitesinLayer(lypool, [=](int n){ lypoolbp(BPL, n); });
+    L->forallSitesinLayer(ly1, [=](int n){ ly1bp(BPL, n); });
   };
 
   backpropagate(&bpntw);
@@ -107,12 +110,12 @@ int main(int argc, char const *argv[]) {
   // numerical derivation: to this latter we need partial_update
   auto partial_update = [=](Network* L, int ly) {
     randiv.set_seed(10);  // the same seed as before
-    if (ly<= ly1) L->applytoLayer(ly1, [=](int n){ ly1update(L, n); });
-    if (ly<= lypool) L->applytoLayer(lypool, [=](int n){ lypoolupdate(L, n); });
-    if (ly<= ly3) L->applytoLayer(ly3, [=](int n){ ly3update(L, n); });
-    if (ly<= lydrop) L->applytoLayer(lydrop, [=](int n){ lydropupdate(L, n); });
-    if (ly<= resly) L->applytoLayer(resly, [=](int n){ reslyupdate(L, n); });
-    if (ly<= lossly) L->applytoLayer(lossly, [=](int n){ lossupdate(L, n); });
+    if (ly<= ly1) L->forallSitesinLayer(ly1, [=](int n){ ly1update(L, n); });
+    if (ly<= lypool) L->forallSitesinLayer(lypool, [=](int n){ lypoolupdate(L, n); });
+    if (ly<= ly3) L->forallSitesinLayer(ly3, [=](int n){ ly3update(L, n); });
+    if (ly<= lydrop) L->forallSitesinLayer(lydrop, [=](int n){ lydropupdate(L, n); });
+    if (ly<= resly) L->forallSitesinLayer(resly, [=](int n){ reslyupdate(L, n); });
+    if (ly<= lossly) L->forallSitesinLayer(lossly, [=](int n){ lossupdate(L, n); });
   };
   Numder ndntw(&ntw, partial_update);
   ndntw.getD();
@@ -133,7 +136,7 @@ int main(int argc, char const *argv[]) {
     if (lyn != lynprev) std::cout << " ----------------------------\n";
     lynprev = lyn;
     std::cout << n << "(" << lyn << ")";
-    std::cout << ": axon=" << ntw.axon(n);
+    std::cout << ": axon=" << ntw.site(n);
     std::cout << std::endl;
     if (pr_Dsite[lyn]) {
       std::cout << "\tDaxon=" << bpntw.Dsite(n) << " -- "
@@ -145,7 +148,7 @@ int main(int argc, char const *argv[]) {
     if (pr_Dconn[lyn]) {
       for (int cid = 0; cid < ntw.nConnections(n); cid++) {
         std::cout << "\t\t[" << cid << "]";
-        std::cout << "\tconn=" << ntw.siteConnection(n, cid);
+        std::cout << "\tconn=" << ntw.connection(n, cid);
         std::cout << "\tDconn=" << bpntw.Dconn(n, cid);
         std::cout << " -- " << ndntw.dconn[ ntw.getconnID(n, cid)] << std::endl;
         error2+= sq(bpntw.Dconn(n, cid)-ndntw.dconn[ ntw.getconnID(n, cid)]);

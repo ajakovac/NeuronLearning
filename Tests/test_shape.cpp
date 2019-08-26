@@ -5,12 +5,14 @@
 
 int main(int argc, char const *argv[]) {
   std::cout << "\nShape testing!\n";
+  Position p0(3, 0);
   Position p1({3, 4, 5});
   Position p2 = {4, 5, 6};
   Position p3 = {p1, p2, {3, 4}};
   Position p4 = p3;
   Shape sp({5, 5});
 
+  std::cout << p0 << '\n';
   std::cout << p1 << '\n';
   std::cout << p2 << '\n';
   std::cout << p3 << '\n';

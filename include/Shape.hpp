@@ -172,7 +172,7 @@ auto operator-(std::vector<Tx> x, std::vector<Ty> y) {
 template<typename Tx, typename Ty>
 auto cdot(std::vector<Tx> x, std::vector<Ty> y) {
   decltype(x) z;
-  if (x.size() != y.size()) throw(Error("operator- (Shape): size mismatch!"));
+  if (x.size() != y.size()) throw(Error("cdot (Shape): size mismatch!"));
   for (unsigned int i = 0; i < x.size(); i++) z.push_back(x[i]*y[i]);
   return z;
 }

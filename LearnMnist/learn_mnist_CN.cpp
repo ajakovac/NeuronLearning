@@ -1,6 +1,7 @@
 /* Copyright (C) NeuronLearning_project
  * Written by A. Jakovac 2018 */
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <chrono>
 #include "Structure.hpp"
@@ -24,17 +25,22 @@ int main(int argc, char const *argv[]) try {
   Network ntw;
   int basely = ntw.AddLayer({nrows, ncols});
 
-  int  ly1 = ntw.AddLayer({nrows, ncols});
-  ntw.ConnectLastLayer(alllayer(basely), normal_dist(0.0, 0.01));
+  int  ly1 = ntw.AddLayer({nrows-7, ncols-7});
+  ntw.ConnectLastLayer(masquedlist(basely, {8, 8}, {1, 1}, {0, 0}),
+                       normal_dist(0.0, 0.01));
   auto ly1update = affine_nonlin_update(ReLU);
   auto ly1bp = affine_nonlin_bp(dReLU);
 
+  int  ly2 = ntw.AddLayer({nrows-11, ncols-11});
+  ntw.ConnectLastLayer(masquedlist(ly1, {5, 5}, {1, 1}, {0, 0}),
+                       normal_dist(0.0, 0.01));
+  auto ly2update = affine_nonlin_update(ReLU);
+  auto ly2bp = affine_nonlin_bp(dReLU);
 
   int  lyres = ntw.AddLayer({10});
-  ntw.ConnectLastLayer(alllayer(ly1), normal_dist(0.0, 0.01));
+  ntw.ConnectLastLayer(alllayer(ly2), normal_dist(0.0, 0.01));
   auto lyresupdate = affine_nonlin_update(exp_fn(1.0, 0.5));
   auto lyresbp = affine_nonlin_bp(dexp(1.0, 0.5));
-
 
   int lossly = ntw.AddLayer({1});
   ntw.ConnectLastLayer(alllayer(lyres), 1.0);
@@ -51,6 +57,7 @@ int main(int argc, char const *argv[]) try {
 
   auto update = [=](Network *N) {
     N->forallSitesinLayer(ly1, [=](int n){ ly1update(N, n);});
+    N->forallSitesinLayer(ly2, [=](int n){ ly2update(N, n);});
     N->forallSitesinLayer(lyres, [=](int n){ lyresupdate(N, n);});
     N->forallSitesinLayer(lossly, [=](int n){ lossupdate(N, n);});
   };
@@ -60,6 +67,7 @@ int main(int argc, char const *argv[]) try {
     DN->Dsite(N->nSites()-1) = 1.0;  // start with unit derivative
     N->forallSitesinLayer(lossly, [=](int n){ lossbp(DN, n);});
     N->forallSitesinLayer(lyres, [=](int n){ lyresbp(DN, n);});
+    N->forallSitesinLayer(ly2, [=](int n){ ly2bp(DN, n);});
     N->forallSitesinLayer(ly1, [=](int n){ ly1bp(DN, n);});
   };
 
@@ -101,7 +109,7 @@ int main(int argc, char const *argv[]) try {
 
   std::cout << "\n#---------\n";
 
-  std::cout << "#cnt\tepoch\tnbtch\tavrerr\tavrcorr(%)" << std::endl;
+  std::cout << "#cnt  epoch  nbtch  avrerr  avrcorr(%)" << std::endl;
   int globalcount = 0;
 
   for (int epoch = 0; epoch < epochnumber; ++epoch) {
@@ -149,11 +157,16 @@ int main(int argc, char const *argv[]) try {
 
 
       if (nerrprint > printnumber) {
-        std::cout << globalcount++ << " ";
-        std::cout << epoch << " " << nbtch;
-        std::cout << " " << err/(nerrprint*batchsize);
-        std::cout << " " << (ncorr*100.0)/(nerrprint*batchsize);
-        std::cout << std::endl;
+        std::cout << std::fixed << std::setprecision(2);
+        std::cout << "                                 \r";
+        std::cout << std::flush;
+        std::cout << std::right
+                  << std::setw(4) << globalcount++
+                  << std::setw(7) << epoch
+                  << std::setw(7) << nbtch
+                  << std::setw(8) << err/(nerrprint*batchsize)
+                  << std::setw(9) << (ncorr*100.0)/(nerrprint*batchsize);
+        std::cout << " %" << std::flush;
         nerrprint = 1;
         err = 0;
         ncorr = 0;
@@ -165,11 +178,13 @@ int main(int argc, char const *argv[]) try {
       double lrate = learningrate/batchsize;
       learnmethod.startlearncycle();
       learnmethod.learn(ly1, lrate);
-      learnmethod.learn(lyres, 10*lrate);
+      learnmethod.learn(ly2, 10*lrate);
+      learnmethod.learn(lyres, 20*lrate);
     }
   }
   // save the optimized network
   ntw.save("learn_mnist.ntw");
+  std::cout << "\n__END__\n";
 
   return 0;
 } catch(Error & u) {

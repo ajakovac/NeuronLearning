@@ -16,6 +16,7 @@
 // backpropagation.
 
 class DNetwork {
+ public:
   // here are the data: all hidden
   Network *L;  // the network we associate backpropagation
   // vectors of number_of_connections size
@@ -27,7 +28,6 @@ class DNetwork {
   // the core of the backpropagation method: how to propagate the derivative
   // at a given site to earlier sites. Each layer should have such a function
 
- public:
   // first the functions to reach data
   Network* associatedNetwork() { return L;}
   double& Dsite(int sn) {return z[sn];}
@@ -36,9 +36,9 @@ class DNetwork {
 
   // lambda to read the dconn values
   auto readDconn(int sn) {
-    double *dconndat = &dconn[ L->fn_connoffset(sn)];
-    return [=](int cn) {
-      return dconndat+cn;
+    double *dconndat = &dconn[ L->getconnID(sn, 0)];
+    return [=](int cn) -> double& {
+      return *(dconndat+cn);
     };
   }
 
@@ -57,6 +57,12 @@ class DNetwork {
     for (unsigned int n = 0; n < dconn.size(); ++n) dconn[n] += bpadd.dconn[n];
     for (unsigned int n = 0; n < z.size(); ++n) z[n] += bpadd.z[n];
   }
+
+  void add(const DNetwork &bpadd, const double a = 1.0) {
+    for (unsigned int n = 0; n < dconn.size(); ++n)
+      dconn[n] += a*bpadd.dconn[n];
+    for (unsigned int n = 0; n < z.size(); ++n) z[n] += a*bpadd.z[n];
+  }
 };
 
 // the most usual layer type that has a linear transformation followed by a
@@ -66,7 +72,7 @@ class DNetwork {
 auto affine_nonlin_bp = [](auto df) {
   return [=](DNetwork* BL, int an) {
     Network* L = BL->associatedNetwork();
-    double dfn = df(L->axon(an));
+    double dfn = df(L->site(an));
     auto snfn = L->readConnectedSite(an);
     auto connfn = L->readConnection(an);
     auto dconnfn = BL->readDconn(an);
@@ -76,7 +82,7 @@ auto affine_nonlin_bp = [](auto df) {
       // this is the site we are connected to
       int sn = snfn(cn);
       // refresh the connection derivative
-      *dconnfn(cn) += dy*dfn* L->axon(sn);
+      dconnfn(cn) += dy*dfn* L->site(sn);
       // backpropagate information to the preceding sites
       BL->Dsite(sn) += dy*dfn* connfn(cn);
     }
@@ -110,12 +116,12 @@ auto d_pnorm_loss = [](int p, std::vector<double>* wanted_output) {
   return [=](DNetwork* BL, int sn) {
     Network* L = BL->associatedNetwork();
     for (unsigned int i = 0; i < L->nConnections(sn); i++) {
-      double xi = L->siteConnectedValue(sn, i) - (*wanted_output)[i];
+      double xi = L->connectedValue(sn, i) - (*wanted_output)[i];
       if (p > 1) {
-        BL->Dsite(L->siteConnectedSite(sn, i)) +=
+        BL->Dsite(L->connectedSite(sn, i)) +=
           BL->Dsite(sn)*xi* std::pow(std::fabs(xi), p-2);
       } else {
-        BL->Dsite(L->siteConnectedSite(sn, i)) +=
+        BL->Dsite(L->connectedSite(sn, i)) +=
           BL->Dsite(sn)*(xi > 0 ? 1: -1);
       }
     }
@@ -129,16 +135,16 @@ auto d_normalized_pnorm_loss = [](int p, std::vector<double>* wanted_output) {
     double nrm = 0;
     int nconns = L->nConnections(sn);
     for (int i = 0; i < nconns; i++)
-      nrm += L->siteConnectedValue(sn, i);
+      nrm += L->connectedValue(sn, i);
     double CC = 0;
     for (int i = 0; i < nconns; i++) {
-      double xi = L->siteConnectedValue(sn, i);
+      double xi = L->connectedValue(sn, i);
       double dxi = xi/nrm - (*wanted_output)[i];
       CC+= xi * dxi* std::pow(std::fabs(dxi), p-2);
     }
     for (int i = 0; i < nconns; i++) {
-      double dxi = L->siteConnectedValue(sn, i)/nrm - (*wanted_output)[i];
-      BL->Dsite(L->siteConnectedSite(sn, i)) +=
+      double dxi = L->connectedValue(sn, i)/nrm - (*wanted_output)[i];
+      BL->Dsite(L->connectedSite(sn, i)) +=
         BL->Dsite(sn)*(dxi* std::pow(std::fabs(dxi), p-2) - CC/nrm) /nrm;
     }
   };
@@ -151,13 +157,13 @@ auto d_KL_loss = [](std::vector<double>* wanted_output) {
     double nrm = 0;
     int nconns = L->nConnections(sn);
     for (int i = 0; i < nconns; i++) {
-      nrm += L->siteConnectedValue(sn, i);
+      nrm += L->connectedValue(sn, i);
     }
     for (int i = 0; i < nconns; i++) {
-      double xi = L->siteConnectedValue(sn, i);
+      double xi = L->connectedValue(sn, i);
       double s = xi/(nrm* (*wanted_output)[i]);
-      BL->Dsite(L->siteConnectedSite(sn, i)) +=
-         BL->Dsite(sn)*(std::log(s*s)/2 - L->axon(sn)) /nrm;
+      BL->Dsite(L->connectedSite(sn, i)) +=
+         BL->Dsite(sn)*(std::log(s*s)/2 - L->site(sn)) /nrm;
     }
   };
 };

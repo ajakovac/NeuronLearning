@@ -25,7 +25,7 @@ void SaveToIdealMemory(int label, const Network& netw) {
     for(uint i = 0; i < netw.nLayers(); ++i) {
       ideal_memory[label].push_back( std::vector<double> (netw.nSitesinLayer(i), 0) );
       for(uint j = 0; j < netw.nSitesinLayer(i); ++j)
-	ideal_memory[label][i][j] = netw.axon(i, j); 
+	ideal_memory[label][i][j] = netw.site(i, j); 
       //*0.1; // if we want a maximal value for Ideal  
     }
     label_occurence_num[label] = 1;
@@ -35,7 +35,7 @@ void SaveToIdealMemory(int label, const Network& netw) {
   int &N = label_occurence_num[label];
   for(uint i = 0; i < netw.nLayers(); ++i)
     for(uint j = 0; j < netw.nSitesinLayer(i); ++j)
-      v[i][j] = (N*v[i][j] + netw.axon(i, j))/ (N + 1); // i' = (N*i + x)/(N+1)
+      v[i][j] = (N*v[i][j] + netw.site(i, j))/ (N + 1); // i' = (N*i + x)/(N+1)
   ++N;
 }
 
@@ -43,10 +43,10 @@ void NormalizeConnections(Network& netw) {
   for(uint i = 0; i < netw.nSites(); ++i) {
     double norm = 0;
     for(uint cn = 0; cn < netw.nConnections(i); ++cn)
-      norm += netw.siteConnection(i, cn)*netw.siteConnection(i, cn);
+      norm += netw.connection(i, cn)*netw.connection(i, cn);
     norm = sqrt(norm);
     for(uint cn = 0; cn < netw.nConnections(i); ++cn)
-      netw.siteConnection(i, cn) /= norm;
+      netw.connection(i, cn) /= norm;
   }
 }
 
@@ -84,8 +84,8 @@ int main(int, char const *[]) try {
 
   auto update = [=](Network *N) 
     {
-      N->applytoLayer(ly1, [=](int n) {ly1update(N, n);});
-      N->applytoLayer(ly2, [=](int n) {ly2update(N, n);});
+      N->forallSitesinLayer(ly1, [=](int n) {ly1update(N, n);});
+      N->forallSitesinLayer(ly2, [=](int n) {ly2update(N, n);});
     };
 
   //---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ int main(int, char const *[]) try {
     mnist.restart();
     while( mnist.next() ) {
       for (int n = 0; n < nrows*ncols; ++n)
-	ntw.axon(basely, n) = data[n]/255.0;
+	ntw.site(basely, n) = data[n]/255.0;
       update(&ntw);
       SaveToIdealMemory(mnist.label(), ntw);
       // change the network tructure:
@@ -110,15 +110,15 @@ int main(int, char const *[]) try {
       auto lambda = [&](int n) {
       	  double sum = 0;
       	  for(uint cn = 0; cn < ntw.nConnections(n); ++cn)
-      	    sum += ntw.siteConnectedValue(n, cn)*ntw.siteConnectedValue(n, cn);
+      	    sum += ntw.connectedValue(n, cn)*ntw.connectedValue(n, cn);
       	  double alpha = learning_rate*(GetIdealOfSite(mnist.label(), n, ntw)
       					-ntw[n])/(sum+0.001);
       	  for(uint cn = 0; cn < ntw.nConnections(n); ++cn)
-      	    ntw.siteConnection(n, cn) += alpha*ntw.siteConnectedValue(n, cn)*
+      	    ntw.connection(n, cn) += alpha*ntw.connectedValue(n, cn)*
       	      normal_dist(1, VAR)();
       };
-      ntw.applytoLayer(ly1, lambda);
-      ntw.applytoLayer(ly2, lambda);
+      ntw.forallSitesinLayer(ly1, lambda);
+      ntw.forallSitesinLayer(ly2, lambda);
       NormalizeConnections(ntw);
       if(int(curr_im) % 600 == 0)
 	std::cerr << "                     \r" << int(curr_im/600.0) << "%";
