@@ -8,7 +8,7 @@ Project is writen in *C++*
 * clone the github content to some directory
 * install the datasets; currently three datasets are used in some ways in the programs: [mnist](http://yann.lecun.com/exdb/mnist/), [cifar-10-binary](https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz) and [stl-10](http://ai.stanford.edu/~acoates/stl10/stl10_binary.tar.gz)
 * create a directory at DATASET_DIR, create mnist, cifar-10-batches-bin and stl10_binary subdirectories. Extract the downloaded file content to these libraries
-* in case of mnist, pleaser rename:
+* in case of mnist, please rename:
   * train-images-idx3-ubyte.gz -> train_images
   * train-labels-idx1-ubyte.gz -> train_labels
   * t10k-images-idx3-ubyte.gz -> test_images
